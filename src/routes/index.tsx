@@ -325,7 +325,7 @@ function OperationTips() {
       <CardContent className="space-y-5">
         <div className="space-y-3">
           <p className="text-sm font-medium text-foreground">充值流程</p>
-          <div className="space-y-2">
+          <div className="relative space-y-2 pl-2">
             {steps.map((step, index) => (
               <div key={step} className="flex items-center gap-3">
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sapphire-muted text-xs font-medium text-primary">
@@ -333,7 +333,7 @@ function OperationTips() {
                 </div>
                 <span className="text-sm text-muted-foreground">{step}</span>
                 {index < steps.length - 1 && (
-                  <ArrowRight className="ml-auto h-4 w-4 text-border" />
+                  <ArrowRight className="ml-auto h-3.5 w-3.5 text-border" />
                 )}
               </div>
             ))}
