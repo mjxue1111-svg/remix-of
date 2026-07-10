@@ -34,7 +34,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
+        <Link to="/" className="flex items-center gap-3 outline-none">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Hexagon className="h-5 w-5" />
           </div>
@@ -46,7 +46,7 @@ export function AppSidebar() {
               <span className="text-xs text-muted-foreground">客户端</span>
             </div>
           )}
-        </div>
+        </Link>
       </SidebarHeader>
 
       <SidebarContent>
