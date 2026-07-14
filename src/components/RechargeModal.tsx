@@ -211,7 +211,7 @@ const approvalSteps = [
 
 // ── Form Step ──────────────────────────────────────────────────────────────
 
-function FormStep({ onSuccess, onClose }: { onSuccess: (rechargeId: string, isSpecial: boolean) => void; onClose: () => void }) {
+function FormStep({ onSuccess, onClose, onSaveDraft }: { onSuccess: (rechargeId: string, isSpecial: boolean) => void; onClose: () => void; onSaveDraft: (rechargeId: string, isSpecial: boolean, accountName: string, accountId: string) => void }) {
   // Section 0 — Mode
   const [rechargeMode, setRechargeMode] = useState<"normal" | "special">("normal");
 
@@ -272,6 +272,14 @@ function FormStep({ onSuccess, onClose }: { onSuccess: (rechargeId: string, isSp
   const handleSubmit = () => {
     if (!isFormValid) return;
     onSuccess(generateRechargeId(), isSpecial);
+  };
+
+  const canSaveDraft = selectedAccountId !== "" && amountNum > 0 && !isAccountAbnormal;
+
+  const handleSaveDraft = () => {
+    if (!canSaveDraft) return;
+    const id = generateRechargeId();
+    onSaveDraft(id, isSpecial, selectedAccount?.name ?? "", selectedAccount?.accountId ?? "");
   };
 
   const handleFileChange = (setter: (f: File | null) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -673,11 +681,54 @@ function FormStep({ onSuccess, onClose }: { onSuccess: (rechargeId: string, isSp
           </div>
           <div className="flex items-center gap-3">
             <Button variant="outline" size="lg" onClick={onClose}>取消</Button>
+            <Button variant="outline" size="lg" disabled={!canSaveDraft} onClick={handleSaveDraft}>保存草稿</Button>
             <Button size="lg" disabled={!isFormValid} onClick={handleSubmit} className="min-w-[140px]">提交充值申请</Button>
           </div>
         </div>
       </div>
     </>
+  );
+}
+
+// ── Draft Success Step ─────────────────────────────────────────────────────
+
+function DraftSuccessStep({ rechargeId, isSpecial, accountName, accountId, onContinueEdit, onBackHome }: {
+  rechargeId: string; isSpecial: boolean; accountName: string; accountId: string; onContinueEdit: () => void; onBackHome: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center px-8 py-10">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-100">
+        <FileText className="h-10 w-10 text-gray-500" />
+      </div>
+
+      <h2 className="mt-6 text-xl font-bold tracking-tight text-foreground">草稿已保存</h2>
+      <p className="mt-2 max-w-md text-center text-sm leading-relaxed text-muted-foreground">
+        您的充值申请已保存为草稿，后续可在充值任务看板中继续提交。
+      </p>
+
+      <div className="mt-6 w-full max-w-sm rounded-xl border border-border/60 bg-sapphire-subtle p-5">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">充值单号</span><span className="font-mono text-sm font-semibold text-foreground">{rechargeId}</span></div>
+          <div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">充值类型</span>
+            <Badge className={`gap-1 text-xs ${isSpecial ? "border-amber-200 bg-amber-50 text-amber-700" : "border-blue-200 bg-blue-50 text-blue-700"}`}>
+              {isSpecial ? <><Zap className="h-3 w-3" />特批充值</> : <><Wallet className="h-3 w-3" />常规充值</>}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">账户名称</span><span className="text-sm font-medium text-foreground">{accountName}</span></div>
+          <div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">账户 ID</span><span className="font-mono text-sm text-foreground">{accountId}</span></div>
+          <div className="border-t border-border/60 pt-3">
+            <div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">当前状态</span>
+              <Badge className="gap-1 border-gray-200 bg-gray-50 text-xs text-gray-500"><FileText className="h-3 w-3" />草稿</Badge>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 flex items-center gap-3">
+        <Button variant="outline" size="lg" onClick={onBackHome}>返回看板</Button>
+        <Button size="lg" onClick={onContinueEdit} className="gap-2">继续编辑<ChevronRight className="h-4 w-4" /></Button>
+      </div>
+    </div>
   );
 }
 
@@ -722,9 +773,10 @@ function SuccessStep({ rechargeId, isSpecial, onViewProgress, onBackHome }: {
 // ── Main Modal ─────────────────────────────────────────────────────────────
 
 export function RechargeModal({ open, onOpenChange }: RechargeModalProps) {
-  const [step, setStep] = useState<"form" | "success">("form");
+  const [step, setStep] = useState<"form" | "success" | "draft">("form");
   const [rechargeId, setRechargeId] = useState("");
   const [isSpecial, setIsSpecial] = useState(false);
+  const [draftInfo, setDraftInfo] = useState<{ accountName: string; accountId: string }>({ accountName: "", accountId: "" });
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -732,6 +784,12 @@ export function RechargeModal({ open, onOpenChange }: RechargeModalProps) {
 
   const handleClose = useCallback(() => onOpenChange(false), [onOpenChange]);
   const handleSuccess = useCallback((id: string, special: boolean) => { setRechargeId(id); setIsSpecial(special); setStep("success"); }, []);
+  const handleSaveDraft = useCallback((id: string, special: boolean, accountName: string, accountId: string) => {
+    setRechargeId(id); setIsSpecial(special);
+    setDraftInfo({ accountName, accountId });
+    setStep("draft");
+  }, []);
+  const handleContinueEdit = useCallback(() => setStep("form"), []);
   const handleViewProgress = useCallback(() => { onOpenChange(false); window.location.href = "/recharge"; }, [onOpenChange]);
   const handleBackHome = useCallback(() => onOpenChange(false), [onOpenChange]);
 
@@ -742,7 +800,9 @@ export function RechargeModal({ open, onOpenChange }: RechargeModalProps) {
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={handleClose} />
       <div className="relative z-10 w-full max-w-[720px] max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl" role="dialog" aria-modal="true">
         {step === "form" ? (
-          <FormStep onSuccess={handleSuccess} onClose={handleClose} />
+          <FormStep onSuccess={handleSuccess} onClose={handleClose} onSaveDraft={handleSaveDraft} />
+        ) : step === "draft" ? (
+          <DraftSuccessStep rechargeId={rechargeId} isSpecial={isSpecial} accountName={draftInfo.accountName} accountId={draftInfo.accountId} onContinueEdit={handleContinueEdit} onBackHome={handleBackHome} />
         ) : (
           <SuccessStep rechargeId={rechargeId} isSpecial={isSpecial} onViewProgress={handleViewProgress} onBackHome={handleBackHome} />
         )}

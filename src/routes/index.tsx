@@ -37,6 +37,7 @@ import { RechargeModal } from "@/components/RechargeModal";
 import { AddAccountModal } from "@/components/AddAccountModal";
 import { TaskDetailDrawer, type DetailTaskInfo } from "@/components/TaskDetailDrawer";
 import { UploadPaymentModal, type PaymentTaskInfo, type UploadMode } from "@/components/UploadPaymentModal";
+import { CancelOrderModal, type CancelTaskInfo } from "@/components/CancelOrderModal";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -80,6 +81,8 @@ const specialStepDescs = [
 ];
 
 const nodeStatusMap: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
+  // Draft
+  draft: { label: "草稿", className: "border-gray-200 bg-gray-50 text-gray-500", icon: <FileText className="h-3 w-3" /> },
   // Regular recharge nodes
   pending_audit: { label: "待审核", className: "border-blue-200 bg-blue-50 text-blue-700", icon: <Clock className="h-3 w-3" /> },
   audit_approved: { label: "审核通过", className: "border-blue-200 bg-blue-50 text-blue-700", icon: <CheckCircle2 className="h-3 w-3" /> },
@@ -106,6 +109,7 @@ interface Task {
   discount: string;
   node: string;
   rechargeType: "regular" | "special";
+  isDraft?: boolean;
   handler: string;
   statusDescription: string;
   step: number;
@@ -170,6 +174,16 @@ function getOrderCompleted(task: Task): boolean {
   return atFinalStep;
 }
 
+function canCancelOrder(task: Task): boolean {
+  // Allowed: draft, pending upload, submitted but not in audit, audit rejected, error not yet resubmitted
+  if (task.isDraft) return true;
+  if (task.financeConfirmed) return false; // already confirmed
+  if (task.step >= 4 && task.rechargeType === "regular") return false; // platform transfer or completed
+  if (task.step >= 3 && task.rechargeType === "special") return false; // approved or completed
+  if (isInAudit(task)) return false; // in audit
+  return true;
+}
+
 function getStepTooltip(task: Task, index: number, isSpecial: boolean): string {
   const hasReceipt = !!task.paymentReceipt;
   const hasPaid = !!task.paymentReceipt;
@@ -213,6 +227,14 @@ function getStepTooltip(task: Task, index: number, isSpecial: boolean): string {
 }
 
 const tasks: Task[] = [
+  // Row 0: Draft — pinned top
+  {
+    id: "RC-2026-07006", account: "云岚主账户", accountId: "ST-10086101", subject: "上海云岚科技有限公司",
+    amount: "¥100,000.00", payableAmount: "¥98,000.00", discount: "98 折",
+    node: "draft", rechargeType: "regular", isDraft: true,
+    handler: "—", statusDescription: "草稿，尚未正式提交",
+    step: 0, totalSteps: 5, time: "2026-07-10 15:20", purpose: "达人采买", orderCompleted: false,
+  },
   // Row 1: Regular, paid, transferring
   {
     id: "RC-2026-07001", account: "云岚主账户", accountId: "ST-10086101", subject: "上海云岚科技有限公司",
@@ -634,9 +656,15 @@ function StatsCards() {
 function RechargeTasks({
   onViewDetail,
   onUploadPayment,
+  onRecharge,
+  onCancelOrder,
+  onContinueSubmit,
 }: {
   onViewDetail: (task: Task) => void;
   onUploadPayment: (task: Task, mode: UploadMode) => void;
+  onRecharge: () => void;
+  onCancelOrder: (task: Task) => void;
+  onContinueSubmit: (task: Task) => void;
 }) {
   return (
     <Card className="border-border/60 shadow-sm">
@@ -651,7 +679,10 @@ function RechargeTasks({
             </div>
             <CardDescription>查看最近充值任务及处理进度</CardDescription>
           </div>
-          <div className="pt-2 sm:pt-0">
+          <div className="flex items-center gap-2 pt-2 sm:pt-0">
+            <Button size="sm" className="gap-1.5" onClick={onRecharge}>
+              <Wallet className="h-3.5 w-3.5" />发起充值
+            </Button>
             <Button variant="ghost" size="sm" className="gap-1 text-primary" asChild>
               <Link to="/recharge">查看全部<ChevronRight className="h-4 w-4" /></Link>
             </Button>
@@ -756,9 +787,10 @@ function RechargeTasks({
                           {stepLabels.map((stepLabel, i) => {
                             const stepNum = i + 1;
                             let segClass = "bg-muted";
-                            if (stepNum < task.step) segClass = "bg-emerald-400";
+                            if (task.isDraft) { segClass = "bg-muted"; }
+                            else if (stepNum < task.step) segClass = "bg-emerald-400";
                             else if (stepNum === task.step) segClass = isError ? "bg-red-500" : isSpecial ? "bg-amber-500" : "bg-primary";
-                            if (isCompleted && stepNum >= task.step) segClass = "bg-emerald-500";
+                            if (!task.isDraft && isCompleted && stepNum >= task.step) segClass = "bg-emerald-500";
                             const tip = getStepTooltip(task, i, isSpecial);
                             return (
                               <div key={stepLabel} className="group relative flex-1" title={stepLabel}>
@@ -770,8 +802,8 @@ function RechargeTasks({
                             );
                           })}
                         </div>
-                        <p className={`text-[11px] font-medium ${isError ? "text-destructive" : isCompleted ? "text-emerald-600" : "text-muted-foreground"}`}>
-                          第 {task.step}/{task.totalSteps} 步{isError ? `｜${node.label}` : isCompleted ? `｜充值完成` : `｜${node.label}中`}
+                        <p className={`text-[11px] font-medium ${isError ? "text-destructive" : isCompleted ? "text-emerald-600" : task.isDraft ? "text-muted-foreground" : "text-muted-foreground"}`}>
+                          {task.isDraft ? "草稿｜尚未提交" : `第 ${task.step}/${task.totalSteps} 步${isError ? `｜${node.label}` : isCompleted ? `｜充值完成` : `｜${node.label}中`}`}
                         </p>
                       </div>
                     </TableCell>
@@ -829,10 +861,44 @@ function RechargeTasks({
                     </TableCell>
 
                     {/* 操作 */}
-                    <TableCell className="whitespace-nowrap py-4">
-                      <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => onViewDetail(task)}>
-                        <Eye className="h-3 w-3" />查看详情
-                      </Button>
+                    <TableCell className="py-2">
+                      <div className="flex flex-col gap-1">
+                        {/* Row 1: 继续提交 */}
+                        {(task.isDraft || payInfo.actionMode === "upload" || payInfo.actionMode === "supplement" || payInfo.actionMode === "reupload_error") ? (
+                          <Button size="sm" variant="outline" className="h-7 gap-1 text-xs border-primary/30 bg-sapphire-subtle text-primary hover:bg-sapphire-muted w-full justify-center" onClick={() => onContinueSubmit(task)}>
+                            <Upload className="h-3 w-3" />继续提交
+                          </Button>
+                        ) : (
+                          <div className="group relative">
+                            <Button size="sm" variant="ghost" disabled className="h-7 gap-1 text-xs w-full justify-center">继续提交</Button>
+                            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">当前订单已进入处理流程，暂不可继续提交</span>
+                          </div>
+                        )}
+                        {/* Row 2: 查看详情 */}
+                        <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground w-full justify-center" onClick={() => onViewDetail(task)}>
+                          <Eye className="h-3 w-3" />查看详情
+                        </Button>
+                        {/* Row 3: … more */}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground w-full justify-center tracking-widest">…</Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-40 p-1.5">
+                            {canCancelOrder(task) ? (
+                              <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors" onClick={() => onCancelOrder(task)}>
+                                <XCircle className="h-3.5 w-3.5" />取消订单
+                              </button>
+                            ) : (
+                              <div className="group relative">
+                                <button disabled className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground/40">
+                                  <XCircle className="h-3.5 w-3.5" />取消订单
+                                </button>
+                                <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">当前订单已进入米播处理流程，暂不可取消</span>
+                              </div>
+                            )}
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -1037,6 +1103,8 @@ function Index() {
   const [uploadPaymentOpen, setUploadPaymentOpen] = useState(false);
   const [uploadTask, setUploadTask] = useState<Task | null>(null);
   const [uploadMode, setUploadMode] = useState<UploadMode>("upload");
+  const [cancelOrderOpen, setCancelOrderOpen] = useState(false);
+  const [cancelTask, setCancelTask] = useState<Task | null>(null);
 
   const handleRecharge = () => setRechargeModalOpen(true);
   const handleAddAccount = () => setAddAccountModalOpen(true);
@@ -1056,6 +1124,24 @@ function Index() {
     if (!t) return null;
     return { id: t.id, rechargeType: t.rechargeType, account: t.account, payableAmount: t.payableAmount, subject: t.subject };
   };
+
+  const buildCancelTaskInfo = (t: Task | null): CancelTaskInfo | null => {
+    if (!t) return null;
+    const node = nodeStatusMap[t.node];
+    return { id: t.id, rechargeType: t.rechargeType, account: t.account, amount: t.amount, payableAmount: t.payableAmount, nodeLabel: node?.label ?? "" };
+  };
+
+  const handleContinueSubmit = useCallback((task: Task) => {
+    if (task.isDraft) { setRechargeModalOpen(true); return; }
+    // For other states, open upload modal
+    const mode: UploadMode = task.rechargeType === "special" && task.step >= task.totalSteps ? "supplement" : "upload";
+    setUploadTask(task); setUploadMode(mode); setUploadPaymentOpen(true);
+  }, []);
+
+  const handleCancelOrder = useCallback((task: Task) => {
+    setCancelTask(task);
+    setCancelOrderOpen(true);
+  }, []);
 
   const buildDetailTaskInfo = (t: Task | null): DetailTaskInfo | null => {
     if (!t) return null;
@@ -1093,7 +1179,7 @@ function Index() {
       <WelcomeSection onRecharge={handleRecharge} />
       <StatsCards />
 
-      <RechargeTasks onViewDetail={handleViewDetail} onUploadPayment={handleUploadPayment} />
+      <RechargeTasks onViewDetail={handleViewDetail} onUploadPayment={handleUploadPayment} onRecharge={handleRecharge} onCancelOrder={handleCancelOrder} onContinueSubmit={handleContinueSubmit} />
 
       <AccountOverview onRecharge={handleRecharge} onAddAccount={handleAddAccount} />
 
@@ -1123,6 +1209,12 @@ function Index() {
         onOpenChange={setUploadPaymentOpen}
         task={buildPaymentTaskInfo(uploadTask)}
         mode={uploadMode}
+      />
+
+      <CancelOrderModal
+        open={cancelOrderOpen}
+        onOpenChange={setCancelOrderOpen}
+        task={buildCancelTaskInfo(cancelTask)}
       />
     </div>
   );
