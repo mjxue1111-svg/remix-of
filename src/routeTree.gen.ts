@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TransactionLedgerRouteImport } from './routes/transaction-ledger'
 import { Route as RechargeRouteImport } from './routes/recharge'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TransactionLedgerRoute = TransactionLedgerRouteImport.update({
+  id: '/transaction-ledger',
+  path: '/transaction-ledger',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RechargeRoute = RechargeRouteImport.update({
   id: '/recharge',
   path: '/recharge',
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/recharge': typeof RechargeRoute
+  '/transaction-ledger': typeof TransactionLedgerRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/recharge': typeof RechargeRoute
+  '/transaction-ledger': typeof TransactionLedgerRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,20 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/recharge': typeof RechargeRoute
+  '/transaction-ledger': typeof TransactionLedgerRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/login' | '/recharge'
+  fullPaths: '/' | '/dashboard' | '/login' | '/recharge' | '/transaction-ledger'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/login' | '/recharge'
-  id: '__root__' | '/' | '/dashboard' | '/login' | '/recharge'
+  to: '/' | '/dashboard' | '/login' | '/recharge' | '/transaction-ledger'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/recharge'
+    | '/transaction-ledger'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,10 +82,18 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   RechargeRoute: typeof RechargeRoute
+  TransactionLedgerRoute: typeof TransactionLedgerRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/transaction-ledger': {
+      id: '/transaction-ledger'
+      path: '/transaction-ledger'
+      fullPath: '/transaction-ledger'
+      preLoaderRoute: typeof TransactionLedgerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/recharge': {
       id: '/recharge'
       path: '/recharge'
@@ -107,7 +130,18 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   RechargeRoute: RechargeRoute,
+  TransactionLedgerRoute: TransactionLedgerRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

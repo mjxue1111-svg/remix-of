@@ -8,7 +8,7 @@ export function DashboardHeader() {
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Building2 className="h-4 w-4 text-primary" />
-          <span className="font-medium text-foreground">上海星图科技有限公司</span>
+          <span className="font-medium text-foreground">上海云岚科技有限公司</span>
         </div>
         <div className="hidden h-4 w-px bg-border sm:block" />
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
