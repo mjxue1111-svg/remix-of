@@ -968,9 +968,7 @@ function AccountOverview({ onRecharge, onAddAccount }: { onRecharge: () => void;
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="whitespace-nowrap font-semibold">账户名称</TableHead>
-                <TableHead className="whitespace-nowrap font-semibold">星图账户 ID</TableHead>
-                <TableHead className="whitespace-nowrap font-semibold">账户主体</TableHead>
+                <TableHead className="whitespace-nowrap font-semibold min-w-[200px]">账户信息</TableHead>
                 <TableHead className="whitespace-nowrap text-right font-semibold">当前余额</TableHead>
                 <TableHead className="whitespace-nowrap text-right font-semibold">本月充值</TableHead>
                 <TableHead className="whitespace-nowrap text-right font-semibold">本月消耗</TableHead>
@@ -983,42 +981,30 @@ function AccountOverview({ onRecharge, onAddAccount }: { onRecharge: () => void;
               {accounts.map((account) => {
                 const statusCfg = accountStatusMap[account.status] ?? accountStatusMap["正常"];
                 const isAbnormal = account.status === "异常" || account.status === "不可充值";
+                const isPending = account.status === "审核中";
+                const canRecharge = !isAbnormal && !isPending;
                 return (
-                  <TableRow key={account.accountId} className="h-16">
-                    {/* 账户名称 */}
-                    <TableCell className="whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8 border border-border">
-                          <AvatarFallback className="bg-sapphire-muted text-xs font-medium text-primary">
-                            {account.name.slice(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium text-foreground">{account.name}</span>
+                  <TableRow key={account.accountId}>
+                    {/* 账户信息 — 三行合并 */}
+                    <TableCell className="py-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <Badge className="h-4 gap-0.5 border-blue-200 bg-blue-50 px-1 text-[10px] text-blue-700">星图</Badge>
+                          <span className="text-sm font-semibold text-foreground">{account.name}</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">账户 ID：{account.accountId}</p>
+                        <p className="text-[11px] text-muted-foreground">主体：{account.subject}</p>
                       </div>
                     </TableCell>
-                    {/* 星图账户 ID */}
-                    <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">
-                      {account.accountId}
-                    </TableCell>
-                    {/* 账户主体 */}
-                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                      {account.subject}
-                    </TableCell>
                     {/* 当前余额 */}
-                    <TableCell className="whitespace-nowrap text-right font-semibold text-foreground">
-                      {account.balance}
-                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-right font-semibold text-foreground">{account.balance}</TableCell>
                     {/* 本月充值 */}
-                    <TableCell className="whitespace-nowrap text-right text-sm text-emerald-600">
-                      {account.monthlyRecharge}
-                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-right text-sm text-emerald-600">{account.monthlyRecharge}</TableCell>
                     {/* 本月消耗 */}
-                    <TableCell className="whitespace-nowrap text-right text-sm text-amber-600">
-                      {account.monthlySpend}
-                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-right text-sm text-amber-600">{account.monthlySpend}</TableCell>
                     {/* 账户状态 */}
                     <TableCell className="whitespace-nowrap">
-                      <Badge variant={statusCfg.variant} className={`gap-1 text-xs ${statusCfg.className} hover:${statusCfg.className}`}>
+                      <Badge variant={statusCfg.variant} className={`gap-1 text-xs ${statusCfg.className}`}>
                         {account.status === "正常" && <CheckCircle2 className="h-3 w-3" />}
                         {account.status === "审核中" && <Clock4 className="h-3 w-3" />}
                         {account.status === "异常" && <ShieldAlert className="h-3 w-3" />}
@@ -1027,59 +1013,27 @@ function AccountOverview({ onRecharge, onAddAccount }: { onRecharge: () => void;
                       </Badge>
                     </TableCell>
                     {/* 余额更新时间 */}
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                      {account.updatedAt}
-                    </TableCell>
-                    {/* 操作 */}
-                    <TableCell className="whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        {isAbnormal ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled
-                            className="h-7 text-xs text-muted-foreground"
-                          >
-                            <Ban className="mr-1 h-3 w-3" />
-                            发起充值
+                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{account.updatedAt}</TableCell>
+                    {/* 操作 — 竖向排列 */}
+                    <TableCell className="py-2">
+                      <div className="flex flex-col gap-1">
+                        {canRecharge ? (
+                          <Button variant="outline" size="sm" onClick={onRecharge} className="h-7 border-primary/30 bg-sapphire-subtle text-xs text-primary hover:bg-sapphire-muted w-full justify-center">
+                            <Wallet className="mr-1 h-3 w-3" />发起充值
                           </Button>
                         ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={onRecharge}
-                            className="h-7 border-primary/30 bg-sapphire-subtle text-xs text-primary hover:bg-sapphire-muted"
-                          >
-                            <Wallet className="mr-1 h-3 w-3" />
-                            发起充值
-                          </Button>
+                          <div className="group relative">
+                            <Button variant="ghost" size="sm" disabled className="h-7 text-xs text-muted-foreground w-full justify-center">发起充值</Button>
+                            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">
+                              {isPending ? "账户审核通过后可发起充值" : "当前账户暂不可充值，请查看详情"}
+                            </span>
+                          </div>
                         )}
-                        {isAbnormal ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs text-destructive"
-                          >
-                            <ShieldAlert className="mr-1 h-3 w-3" />
-                            查看原因
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs text-muted-foreground hover:text-foreground"
-                          >
-                            <FileText className="mr-1 h-3 w-3" />
-                            查看流水
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          <Eye className="mr-1 h-3 w-3" />
-                          详情
+                        <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground w-full justify-center">
+                          <FileText className="mr-1 h-3 w-3" />查看流水
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground w-full justify-center">
+                          <Eye className="mr-1 h-3 w-3" />详情
                         </Button>
                       </div>
                     </TableCell>
