@@ -3,13 +3,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
-  X, CheckCircle2, FileText, Upload, Wallet, Building2, Zap,
+  X, CheckCircle2, FileText, Upload, Wallet, Zap, AlertTriangle, Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -21,30 +23,41 @@ export interface PaymentTaskInfo {
   subject: string;
 }
 
+export type UploadMode = "upload" | "supplement" | "reupload_pre" | "reupload_post" | "reupload_error";
+
 interface UploadPaymentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   task: PaymentTaskInfo | null;
-  mode: "upload" | "reupload" | "supplement";
+  mode: UploadMode;
+  errorReason?: string;
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-const titleMap: Record<string, string> = {
-  upload: "上传凭证",
-  reupload: "重新上传付款凭证",
-  supplement: "补传付款凭证",
-};
+const reuploadReasons = [
+  "原凭证不清晰",
+  "上传错凭证",
+  "付款金额有调整",
+  "付款主体有调整",
+  "补充完整回单",
+  "其他",
+];
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export function UploadPaymentModal({ open, onOpenChange, task, mode }: UploadPaymentModalProps) {
+export function UploadPaymentModal({ open, onOpenChange, task, mode, errorReason }: UploadPaymentModalProps) {
   const [step, setStep] = useState<"form" | "success">("form");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [payAmount, setPayAmount] = useState("");
   const [payAccountName, setPayAccountName] = useState("");
   const [remarks, setRemarks] = useState("");
+  const [reuploadReason, setReuploadReason] = useState("");
+  const [otherReason, setOtherReason] = useState("");
+  const [acknowledged, setAcknowledged] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  const isPostAudit = mode === "reupload_post";
+  const isError = mode === "reupload_error";
+  const otherReasonTouched = reuploadReason === "其他" && otherReason.trim() === "";
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
@@ -54,12 +67,30 @@ export function UploadPaymentModal({ open, onOpenChange, task, mode }: UploadPay
       setPayAccountName(task.subject);
       setReceiptFile(null);
       setRemarks("");
+      setReuploadReason("");
+      setOtherReason("");
+      setAcknowledged(false);
     }
   }, [open, task]);
 
   const handleClose = useCallback(() => onOpenChange(false), [onOpenChange]);
 
-  const isFormValid = receiptFile !== null && payAmount.trim() !== "" && payAccountName.trim() !== "";
+  const handleReasonChange = (value: string) => {
+    setReuploadReason(value);
+    if (value !== "其他") setOtherReason("");
+  };
+
+  const isFormValid = (() => {
+    if (receiptFile === null) return false;
+    if (payAmount.trim() === "") return false;
+    if (payAccountName.trim() === "") return false;
+    if (isPostAudit) {
+      if (reuploadReason === "") return false;
+      if (reuploadReason === "其他" && otherReason.trim() === "") return false;
+      if (!acknowledged) return false;
+    }
+    return true;
+  })();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -71,6 +102,22 @@ export function UploadPaymentModal({ open, onOpenChange, task, mode }: UploadPay
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [handleClose]);
+
+  const titleMap: Record<string, string> = {
+    upload: "上传付款凭证",
+    supplement: "补传付款凭证",
+    reupload_pre: "重新上传付款凭证",
+    reupload_post: "申请重新上传付款凭证",
+    reupload_error: "重新上传付款凭证",
+  };
+
+  const descMap: Record<string, string> = {
+    upload: "请上传付款凭证，提交后米播将进行确认。",
+    supplement: "请补传付款凭证，提交后米播将进行确认。",
+    reupload_pre: "当前付款凭证尚未进入审核，重新上传后将覆盖原凭证。",
+    reupload_post: "请选择重新上传原因并上传新的付款凭证。",
+    reupload_error: "请重新上传正确的付款凭证。",
+  };
 
   if (!mounted || !open || !task) return null;
 
@@ -85,11 +132,9 @@ export function UploadPaymentModal({ open, onOpenChange, task, mode }: UploadPay
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
                   <h2 className="text-lg font-bold text-foreground">{titleMap[mode]}</h2>
-                  <p className="text-sm text-muted-foreground">请上传付款凭证，提交后米播将进行确认。</p>
+                  <p className="text-sm text-muted-foreground">{descMap[mode]}</p>
                 </div>
-                <button onClick={handleClose} className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground">
-                  <X className="h-5 w-5" />
-                </button>
+                <button onClick={handleClose} className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"><X className="h-5 w-5" /></button>
               </div>
 
               {/* Task summary */}
@@ -109,9 +154,60 @@ export function UploadPaymentModal({ open, onOpenChange, task, mode }: UploadPay
 
             {/* Body */}
             <div className="space-y-4 px-6 py-5">
-              {/* File upload */}
+              {/* Error reason */}
+              {isError && errorReason && (
+                <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-red-700">异常原因：{errorReason}</p>
+                    <p className="text-xs text-red-600">请重新上传正确付款凭证</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Post-audit risk warning */}
+              {isPostAudit && (
+                <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                  <p className="text-xs leading-relaxed text-amber-700">
+                    当前付款凭证已进入审核流程。重新上传后，米播将重新核对付款金额、付款主体及到账情况，任务状态可能回退至财务确认节点。
+                  </p>
+                </div>
+              )}
+
+              {/* 1. 重新上传原因 (post-audit only) */}
+              {isPostAudit && (
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold">重新上传原因 <span className="text-destructive">*</span></Label>
+                  <Select value={reuploadReason} onValueChange={handleReasonChange}>
+                    <SelectTrigger className="h-10 w-full"><SelectValue placeholder="请选择重新上传原因" /></SelectTrigger>
+                    <SelectContent>
+                      {reuploadReasons.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* 2. 其他原因说明 — only when "其他" is selected */}
+              {isPostAudit && reuploadReason === "其他" && (
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold">其他原因说明 <span className="text-destructive">*</span></Label>
+                  <Textarea
+                    placeholder="请填写重新上传的具体原因"
+                    value={otherReason}
+                    onChange={(e) => setOtherReason(e.target.value)}
+                    className={`min-h-[60px] resize-none ${otherReasonTouched ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                  />
+                  <p className="text-[11px] text-muted-foreground">选择"其他"时，需补充具体原因，便于米播审核。</p>
+                  {otherReasonTouched && (
+                    <p className="text-[11px] text-destructive">请填写重新上传的具体原因</p>
+                  )}
+                </div>
+              )}
+
+              {/* 3. 新付款凭证 */}
               <div className="space-y-1.5">
-                <Label className="text-sm font-semibold">付款凭证 <span className="text-destructive">*</span></Label>
+                <Label className="text-sm font-semibold">{isPostAudit || isError ? "新付款凭证" : "付款凭证"} <span className="text-destructive">*</span></Label>
                 <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-5 transition-colors hover:border-primary/50 hover:bg-sapphire-subtle">
                   {receiptFile ? (
                     <div className="text-center">
@@ -145,16 +241,31 @@ export function UploadPaymentModal({ open, onOpenChange, task, mode }: UploadPay
                 <p className="text-[11px] text-muted-foreground">请填写实际付款的公司主体或账户户名，便于财务确认到账</p>
               </div>
 
+              {/* 6. 补充说明 */}
               <div className="space-y-1.5">
                 <Label className="text-sm font-semibold">备注说明</Label>
-                <Textarea placeholder="如付款主体与客户主体不一致、分笔付款或其他特殊情况，请在此说明" value={remarks} onChange={(e) => setRemarks(e.target.value)} className="min-h-[60px] resize-none" />
+                <Textarea
+                  placeholder="如付款主体与客户主体不一致、分笔付款或其他特殊情况，请在此说明"
+                  value={remarks} onChange={(e) => setRemarks(e.target.value)} className="min-h-[60px] resize-none" />
               </div>
+
+              {/* Acknowledgement checkbox (post-audit only) */}
+              {isPostAudit && (
+                <div className="flex items-center gap-2.5">
+                  <Checkbox id="ack-reupload" checked={acknowledged} onCheckedChange={(c) => setAcknowledged(c === true)} />
+                  <Label htmlFor="ack-reupload" className="text-xs text-muted-foreground cursor-pointer">
+                    我已知晓重新上传凭证可能导致任务重新审核或节点回退
+                  </Label>
+                </div>
+              )}
             </div>
 
             {/* Footer */}
             <div className="border-t border-border px-6 py-4 flex items-center justify-end gap-3">
               <Button variant="outline" size="lg" onClick={handleClose}>取消</Button>
-              <Button size="lg" disabled={!isFormValid} onClick={() => setStep("success")}>提交凭证</Button>
+              <Button size="lg" disabled={!isFormValid} onClick={() => setStep("success")}>
+                {isPostAudit ? "提交重新上传" : isError ? "确认上传" : mode === "reupload_pre" ? "确认上传" : "提交凭证"}
+              </Button>
             </div>
           </>
         ) : (
