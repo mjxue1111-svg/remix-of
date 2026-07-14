@@ -1,21 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, ShieldCheck, Sparkles, Users, LineChart } from "lucide-react";
+import {
+  ArrowRight,
+  ShieldCheck,
+  Wallet,
+  ReceiptText,
+  BarChart3,
+} from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/start")({
   head: () => ({
     meta: [
-      { title: "开始 · 米线云达人营销协同系统" },
+      { title: "开始 · 米线云充值协同服务平台" },
       {
         name: "description",
         content:
-          "米线云是面向品牌客户、营销代理、MCN 与达人的一体化协同系统,统一管理线索、商机、立项、项目执行、订单合同、财务与人资。",
+          "米线云是面向客户与代理商的充值协同服务平台，统一管理客户账户、充值申请、付款凭证、充值进度与余额流水。",
       },
-      { property: "og:title", content: "米线云 · 达人营销协同系统" },
+      { property: "og:title", content: "米线云 · 充值协同服务平台" },
       {
         property: "og:description",
-        content: "客户 · 代理 · MCN · 达人 四方协同的达人营销操作系统",
+        content: "客户与代理商在线充值协同，提升处理效率与资金信息透明度",
       },
     ],
   }),
@@ -51,26 +57,26 @@ function PortalHome() {
       </header>
 
       <main className="relative z-10 mx-auto max-w-7xl px-6 pb-20 pt-16 lg:pt-24">
+        {/* ── Hero ─────────────────────────────────────────── */}
         <div className="mx-auto max-w-4xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-4 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
             <span className="h-1.5 w-1.5 rounded-full bg-success" />
-            达人营销 · 客户 / 代理 / MCN / 达人 四方协同
+            客户 / 代理商协同 · 账户充值 · 余额流水 · 凭证留痕
           </span>
 
           <h1 className="mt-7 text-balance text-5xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
             <span className="text-gradient-brand">米线云</span>
-            <span className="block mt-3 text-3xl font-semibold text-foreground/90 sm:text-4xl lg:text-5xl">
-              达人营销协同系统
+            <span className="mt-3 block text-3xl font-semibold text-foreground/90 sm:text-4xl lg:text-5xl">
+              充值协同服务平台
             </span>
           </h1>
 
           <p className="mx-auto mt-7 max-w-2xl text-balance text-base leading-relaxed text-muted-foreground sm:text-lg">
-            统一管理线索、商机、立项、项目执行、达人订单与合同、财务与人资。
-            一套系统,把品牌、代理、MCN、达人串成一条高效协同的链路。
+            统一管理客户账户、充值申请、付款凭证、充值进度与余额流水。帮助客户与代理商在线完成充值协同，提升充值处理效率与资金信息透明度。
           </p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <Link to="/login">
+            <Link to="/">
               <Button
                 size="lg"
                 className="h-12 bg-gradient-brand px-7 text-base font-semibold text-primary-foreground shadow-brand hover:shadow-glow hover:opacity-95"
@@ -87,6 +93,7 @@ function PortalHome() {
           </div>
         </div>
 
+        {/* ── Features ─────────────────────────────────────── */}
         <section id="features" className="mt-24 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((f) => (
             <div
@@ -102,24 +109,25 @@ function PortalHome() {
           ))}
         </section>
 
+        {/* ── Roles ────────────────────────────────────────── */}
         <section className="mt-20 rounded-3xl border border-border bg-card/60 p-8 backdrop-blur sm:p-10">
           <h2 className="text-center text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-            两类用户,一套协同
+            两类角色，一套协同
           </h2>
           <p className="mt-3 text-center text-sm text-muted-foreground">
-            品牌客户与达人在同一平台协同,各自查看相关数据。
+            客户与代理商在同一平台内完成充值申请、处理进度同步与资金记录查看。
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            {IDENTITIES.map((i) => (
+            {ROLES.map((r) => (
               <div
-                key={i.name}
+                key={r.name}
                 className="rounded-2xl border border-border bg-background/60 p-5"
               >
                 <div className="text-xs font-medium uppercase tracking-wider text-primary">
-                  {i.tag}
+                  {r.tag}
                 </div>
-                <div className="mt-2 text-lg font-semibold text-foreground">{i.name}</div>
-                <p className="mt-2 text-sm text-muted-foreground">{i.desc}</p>
+                <div className="mt-2 text-lg font-semibold text-foreground">{r.name}</div>
+                <p className="mt-2 text-sm text-muted-foreground">{r.desc}</p>
               </div>
             ))}
           </div>
@@ -130,9 +138,9 @@ function PortalHome() {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-6 py-6 text-xs text-muted-foreground sm:flex-row">
           <div className="flex items-center gap-2">
             <Logo size={20} showWordmark={false} />
-            <span>© {new Date().getFullYear()} 米线云 · 达人营销协同系统</span>
+            <span>© {new Date().getFullYear()} 米线云 · 充值协同服务平台</span>
           </div>
-          <div>专为达人营销链路而生</div>
+          <div>让每一次充值都可追溯</div>
         </div>
       </footer>
     </div>
@@ -141,28 +149,36 @@ function PortalHome() {
 
 const FEATURES = [
   {
-    icon: Users,
-    title: "客户销售一站式",
-    desc: "线索 → 商机 → 客户 → 立项,完整漏斗与销售协同。",
+    icon: Wallet,
+    title: "账户统一管理",
+    desc: "集中管理客户名下账户与资金状态，降低多账户协同成本。",
   },
   {
-    icon: Sparkles,
-    title: "项目执行可视化",
-    desc: "选号、客户项目工作台、达人订单与合同,流程清晰。",
-  },
-  {
-    icon: LineChart,
-    title: "财务与人资闭环",
-    desc: "代理财务对账、人资绩效;客户/MCN/达人各自查看相关收支。",
+    icon: ReceiptText,
+    title: "充值高效流转",
+    desc: "打通申请、付款、确认与处理节点，让充值过程更透明、更有序。",
   },
   {
     icon: ShieldCheck,
-    title: "细粒度权限",
-    desc: "组织 × 身份 × 角色 三维度授权,同一菜单按身份过滤数据范围。",
+    title: "过程清晰可追踪",
+    desc: "关键凭证、状态节点与操作记录全程留痕，便于查询与复核。",
+  },
+  {
+    icon: BarChart3,
+    title: "资金数据可视化",
+    desc: "汇总余额、充值与流水数据，为客户提供清晰的资金视图。",
   },
 ];
 
-const IDENTITIES = [
-  { tag: "BRAND", name: "客户", desc: "查看本品牌的合同、立项、项目进展与财务对账。" },
-  { tag: "CREATOR", name: "达人", desc: "查看本人的订单、合同与收益结算。" },
+const ROLES = [
+  {
+    tag: "CUSTOMER",
+    name: "客户",
+    desc: "发起充值申请，查看付款信息，上传付款凭证，跟踪充值进度，并查看账户余额与流水。",
+  },
+  {
+    tag: "AGENT",
+    name: "代理商",
+    desc: "审核客户充值申请，确认账户与金额信息，跟进财务到账及平台充值处理，维护充值结果与流水记录。",
+  },
 ];

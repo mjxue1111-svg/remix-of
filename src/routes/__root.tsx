@@ -12,6 +12,8 @@ import { useEffect, type ReactNode } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { DashboardHeader } from "@/components/dashboard-header";
+import { Toaster } from "@/components/ui/sonner";
+import { ActiveIdentityProvider } from "@/hooks/useActiveIdentity";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -123,17 +125,20 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SidebarProvider defaultOpen={true}>
-        <div className="flex min-h-screen w-full">
-          <AppSidebar />
-          <div className="flex flex-1 flex-col overflow-hidden">
-            <DashboardHeader />
-            <main className="flex-1 overflow-y-auto bg-background">
-              <Outlet />
-            </main>
+      <ActiveIdentityProvider>
+        <SidebarProvider defaultOpen={true}>
+          <div className="flex min-h-screen w-full">
+            <AppSidebar />
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <DashboardHeader />
+              <main className="flex-1 overflow-y-auto bg-background">
+                <Outlet />
+              </main>
+              <Toaster position="top-center" richColors />
+            </div>
           </div>
-        </div>
-      </SidebarProvider>
+        </SidebarProvider>
+      </ActiveIdentityProvider>
     </QueryClientProvider>
   );
 }
