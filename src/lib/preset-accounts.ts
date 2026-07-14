@@ -15,11 +15,11 @@ export const PRESET_ACCOUNTS: Record<IdentityType, PresetAccount> = {
     identity: "client",
     fullName: "示例客户",
   },
-  creator: {
+  agent: {
     phone: "11122223333",
     password: "2121",
-    identity: "creator",
-    fullName: "示例达人",
+    identity: "agent",
+    fullName: "示例代理商",
   },
 };
 

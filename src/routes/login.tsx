@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Loader2, Check } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useActiveIdentity } from "@/hooks/useActiveIdentity";
 import { IDENTITY_LABEL, IDENTITY_ICON, type IdentityType } from "@/lib/identity";
 import {
@@ -29,7 +29,7 @@ import {
 } from "@/lib/preset-accounts";
 import { cn } from "@/lib/utils";
 
-const IDENTITIES: IdentityType[] = ["client", "creator"];
+const IDENTITIES: IdentityType[] = ["client", "agent"];
 
 type AuthTab = "login" | "register" | "forgot";
 
@@ -37,21 +37,12 @@ const searchSchema = z.object({
   tab: z.enum(["login", "register", "forgot"]).optional(),
 });
 
-const PLATFORMS = [
-  { key: "douyin", label: "抖音" },
-  { key: "kuaishou", label: "快手" },
-  { key: "bilibili", label: "B站" },
-  { key: "xiaohongshu", label: "小红书" },
-  { key: "tencent", label: "腾讯视频号" },
-] as const;
-type PlatformKey = (typeof PLATFORMS)[number]["key"];
-
 export const Route = createFileRoute("/login")({
   validateSearch: searchSchema,
   head: () => ({
     meta: [
       { title: "登录 · 米线云" },
-      { name: "description", content: "登录米线云达人营销协同系统" },
+      { name: "description", content: "登录米线云充值协同服务平台" },
     ],
   }),
   component: LoginPage,
@@ -94,7 +85,7 @@ function LoginPage() {
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               欢迎进入米线云
             </h1>
-            <p className="mt-1.5 text-sm text-muted-foreground">达人营销协同系统</p>
+            <p className="mt-1.5 text-sm text-muted-foreground">充值协同服务平台</p>
           </div>
 
           {activeTab === "forgot" ? (
@@ -137,6 +128,8 @@ function LoginPage() {
   );
 }
 
+// ── Identity Picker ──────────────────────────────────────────────────────────
+
 function IdentityPicker({
   value,
   onChange,
@@ -174,6 +167,8 @@ function IdentityPicker({
     </div>
   );
 }
+
+// ── Login Form ───────────────────────────────────────────────────────────────
 
 type LoginError =
   | { kind: "unregistered" }
@@ -402,41 +397,24 @@ function LoginForm({
   );
 }
 
-
+// ── Register Form ────────────────────────────────────────────────────────────
 
 function RegisterForm({ onDone }: { onDone: () => void }) {
   const [identity, setIdentity] = useState<IdentityType>("client");
-  const [fullName, setFullName] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [loading, setLoading] = useState(false);
-
-  // 达人专属字段
-  const [creatorNickname, setCreatorNickname] = useState("");
-  const [platforms, setPlatforms] = useState<PlatformKey[]>([]);
-  const [platformIds, setPlatformIds] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (countdown <= 0) return;
     const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(t);
   }, [countdown]);
-
-  const togglePlatform = (k: PlatformKey) => {
-    setPlatforms((prev) => {
-      if (prev.includes(k)) {
-        const next = prev.filter((p) => p !== k);
-        const { [k]: _drop, ...rest } = platformIds;
-        void _drop;
-        setPlatformIds(rest);
-        return next;
-      }
-      return [...prev, k];
-    });
-  };
 
   const handleSendOtp = () => {
     if (!phone) return toast.error("请输入手机号");
@@ -446,21 +424,13 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
   };
 
   const handleRegister = () => {
-    if (identity === "client") {
-      if (!fullName) return toast.error("请填写联系人姓名");
-      if (!companyName) return toast.error("请输入公司名称");
-    } else {
-      if (!creatorNickname) return toast.error("请填写达人昵称");
-      if (platforms.length === 0) return toast.error("请至少选择一个所属平台");
-      for (const p of platforms) {
-        if (!platformIds[p]?.trim()) {
-          const label = PLATFORMS.find((x) => x.key === p)?.label;
-          return toast.error(`请填写${label}的达人 ID`);
-        }
-      }
+    if (!companyName) {
+      return toast.error(identity === "client" ? "请输入企业名称" : "请输入代理商名称");
     }
+    if (!fullName) return toast.error("请填写联系人姓名");
     if (!phone) return toast.error("请输入手机号");
     if (!otp || otp.length < 4) return toast.error("请输入短信验证码");
+    if (!password || password.length < 4) return toast.error("请设置密码 (至少 4 位)");
 
     setLoading(true);
     // 演示环境: 不真实写入后端,直接成功
@@ -475,134 +445,101 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
     <div className="space-y-5">
       <IdentityPicker value={identity} onChange={setIdentity} label="选择注册身份" />
 
-      {identity === "client" ? (
-        <>
-          <div className="space-y-1.5">
-            <Label>联系人姓名</Label>
-            <Input
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="您的姓名"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>公司名称</Label>
-            <Input
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              placeholder="请输入公司全称"
-            />
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="space-y-1.5">
-            <Label>达人昵称</Label>
-            <Input
-              value={creatorNickname}
-              onChange={(e) => setCreatorNickname(e.target.value)}
-              placeholder="您在平台上的昵称"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="block text-xs text-muted-foreground">
-              所属平台 (可多选)
-            </Label>
-            <div className="grid grid-cols-3 gap-2">
-              {PLATFORMS.map((p) => {
-                const active = platforms.includes(p.key);
-                return (
-                  <button
-                    key={p.key}
-                    type="button"
-                    onClick={() => togglePlatform(p.key)}
-                    className={cn(
-                      "relative flex items-center justify-center rounded-lg border px-2 py-2 text-sm transition",
-                      active
-                        ? "border-primary bg-primary/5 text-primary shadow-brand"
-                        : "border-border bg-card text-muted-foreground hover:border-primary/40",
-                    )}
-                  >
-                    {active && (
-                      <Check className="absolute right-1 top-1 h-3 w-3 text-primary" />
-                    )}
-                    {p.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {platforms.length > 0 && (
-            <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/30 p-3">
-              {platforms.map((p) => {
-                const label = PLATFORMS.find((x) => x.key === p)!.label;
-                return (
-                  <div key={p} className="space-y-1.5">
-                    <Label className="text-xs">{label}达人 ID</Label>
-                    <Input
-                      value={platformIds[p] ?? ""}
-                      onChange={(e) =>
-                        setPlatformIds((prev) => ({ ...prev, [p]: e.target.value }))
-                      }
-                      placeholder={`请输入${label}账号 ID`}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </>
-      )}
-
-      <div className="space-y-1.5">
-        <Label>手机号</Label>
-        <div className="flex items-center rounded-md border border-input bg-background focus-within:border-primary">
-          <span className="pl-3 pr-2 text-sm text-muted-foreground">+86</span>
+      <div className="space-y-4">
+        {/* Company / Agent name */}
+        <div className="space-y-1.5">
+          <Label>{identity === "client" ? "企业名称" : "代理商名称"}</Label>
           <Input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="请输入手机号"
-            className="border-0 shadow-none focus-visible:ring-0"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            placeholder={identity === "client" ? "请输入企业全称" : "请输入代理商名称"}
           />
         </div>
-      </div>
 
-      <div className="space-y-1.5">
-        <Label>短信验证码</Label>
-        <div className="flex gap-2">
+        {/* Contact name */}
+        <div className="space-y-1.5">
+          <Label>联系人姓名</Label>
           <Input
-            value={otp}
-            onChange={(e) => setOtp(e.target.value)}
-            placeholder="请输入短信验证码"
-            maxLength={6}
-            disabled={!otpSent}
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="您的姓名"
           />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleSendOtp}
-            disabled={loading || !phone || countdown > 0}
-            className="shrink-0"
-          >
-            {countdown > 0 ? `${countdown}s` : otpSent ? "重新发送" : "获取验证码"}
-          </Button>
         </div>
+
+        {/* Phone */}
+        <div className="space-y-1.5">
+          <Label>手机号</Label>
+          <div className="flex items-center rounded-md border border-input bg-background focus-within:border-primary">
+            <span className="pl-3 pr-2 text-sm text-muted-foreground">+86</span>
+            <Input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="请输入手机号"
+              className="border-0 shadow-none focus-visible:ring-0"
+            />
+          </div>
+        </div>
+
+        {/* SMS OTP */}
+        <div className="space-y-1.5">
+          <Label>短信验证码</Label>
+          <div className="flex gap-2">
+            <Input
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              placeholder="请输入短信验证码"
+              maxLength={6}
+              disabled={!otpSent}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSendOtp}
+              disabled={loading || !phone || countdown > 0}
+              className="shrink-0"
+            >
+              {countdown > 0 ? `${countdown}s` : otpSent ? "重新发送" : "获取验证码"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Set password */}
+        <div className="space-y-1.5">
+          <Label>设置密码</Label>
+          <Input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="请设置登录密码 (至少 4 位)"
+          />
+        </div>
+
+        <Button
+          className="w-full bg-gradient-brand text-primary-foreground shadow-brand"
+          onClick={handleRegister}
+          disabled={loading}
+        >
+          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          注册
+        </Button>
       </div>
 
-      <Button
-        className="w-full bg-gradient-brand text-primary-foreground shadow-brand"
-        onClick={handleRegister}
-        disabled={loading}
-      >
-        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        注册
-      </Button>
+      <p className="text-center text-xs text-muted-foreground">
+        已有账号?{" "}
+        <button
+          type="button"
+          onClick={onDone}
+          className="font-medium text-primary hover:underline"
+        >
+          去登录
+        </button>
+      </p>
     </div>
   );
 }
+
+// ── Forgot Password Form ─────────────────────────────────────────────────────
 
 function ForgotPasswordForm({
   prefillPhone,
