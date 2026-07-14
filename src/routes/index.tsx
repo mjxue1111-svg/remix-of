@@ -35,8 +35,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { RechargeModal } from "@/components/RechargeModal";
 import { AddAccountModal } from "@/components/AddAccountModal";
-import { TaskProgressDrawer, type TaskInfo } from "@/components/TaskProgressDrawer";
-import { UploadReceiptModal, type ReceiptTaskInfo } from "@/components/UploadReceiptModal";
 import { TaskDetailDrawer, type DetailTaskInfo } from "@/components/TaskDetailDrawer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -62,31 +60,34 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
+// Customer-facing 5-step flow: 提交申请 → 审核通过 → 财务确认 → 平台转账 → 充值完成
+const stepLabels = ["提交申请", "审核通过", "财务确认", "平台转账", "充值完成"];
+
 const nodeStatusMap: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
   pending_audit: {
     label: "待审核",
     className: "border-blue-200 bg-blue-50 text-blue-700",
     icon: <Clock className="h-3 w-3" />,
   },
+  audit_approved: {
+    label: "审核通过",
+    className: "border-blue-200 bg-blue-50 text-blue-700",
+    icon: <CheckCircle2 className="h-3 w-3" />,
+  },
   audit_rejected: {
     label: "审核驳回",
     className: "border-red-200 bg-red-50 text-red-700",
     icon: <XCircle className="h-3 w-3" />,
   },
-  pending_payment: {
-    label: "待打款",
-    className: "border-amber-200 bg-amber-50 text-amber-700",
-    icon: <CreditCard className="h-3 w-3" />,
-  },
-  pending_confirm: {
-    label: "待确认到账",
+  finance_confirm: {
+    label: "财务确认",
     className: "border-sky-200 bg-sky-50 text-sky-700",
     icon: <Upload className="h-3 w-3" />,
   },
   transferring: {
-    label: "平台转账中",
+    label: "平台转账",
     className: "border-primary/30 bg-primary/10 text-primary",
-    icon: <RefreshCw className="h-3 w-3 animate-spin" />,
+    icon: <RefreshCw className="h-3 w-3" />,
   },
   completed: {
     label: "充值完成",
@@ -94,14 +95,9 @@ const nodeStatusMap: Record<string, { label: string; className: string; icon: Re
     icon: <CheckCircle2 className="h-3 w-3" />,
   },
   transfer_error: {
-    label: "到账异常",
+    label: "转账异常",
     className: "border-red-200 bg-red-50 text-red-700",
     icon: <ShieldAlert className="h-3 w-3" />,
-  },
-  cancelled: {
-    label: "已取消",
-    className: "border-gray-200 bg-gray-50 text-gray-500",
-    icon: <XCircle className="h-3 w-3" />,
   },
 };
 
@@ -120,6 +116,9 @@ interface Task {
   totalSteps: number;
   time: string;
   needsCustomer: boolean;
+  purpose: string;
+  isSpecialApproval: boolean;
+  specialApprovalNote?: string;
   // Payment info
   paymentAmount?: string;
   paymentTime?: string;
@@ -151,10 +150,12 @@ const tasks: Task[] = [
     node: "transferring",
     handler: "米播平台媒介",
     statusDescription: "财务已确认到账，正在进行平台转账处理",
-    step: 5,
-    totalSteps: 6,
+    step: 4,
+    totalSteps: 5,
     time: "2026-07-10 14:32",
     needsCustomer: false,
+    purpose: "达人采买",
+    isSpecialApproval: false,
     paymentAmount: "¥49,000.00",
     paymentTime: "2026-07-10 15:05",
     paymentAccountName: "上海云岚科技有限公司",
@@ -174,13 +175,15 @@ const tasks: Task[] = [
     amount: "¥120,000.00",
     payableAmount: "¥117,600.00",
     discount: "98 折",
-    node: "pending_confirm",
+    node: "finance_confirm",
     handler: "米播财务",
     statusDescription: "客户已上传付款回单，等待米播财务确认到账",
-    step: 4,
-    totalSteps: 6,
+    step: 3,
+    totalSteps: 5,
     time: "2026-07-10 11:15",
     needsCustomer: false,
+    purpose: "广告投放",
+    isSpecialApproval: false,
     paymentAmount: "¥117,600.00",
     paymentTime: "2026-07-10 11:50",
     paymentAccountName: "上海云岚科技有限公司",
@@ -201,10 +204,13 @@ const tasks: Task[] = [
     node: "completed",
     handler: "—",
     statusDescription: "充值已完成，资金已到云岚运营账户",
-    step: 6,
-    totalSteps: 6,
+    step: 5,
+    totalSteps: 5,
     time: "2026-07-09 16:48",
     needsCustomer: false,
+    purpose: "助推投流",
+    isSpecialApproval: true,
+    specialApprovalNote: "季度框架协议特批，折扣 98 折",
     paymentAmount: "¥29,400.00",
     paymentTime: "2026-07-09 17:00",
     paymentAccountName: "上海云岚科技有限公司",
@@ -228,7 +234,7 @@ const taskSummary = [
     accent: "bg-blue-50 text-blue-600",
   },
   {
-    label: "待我处理",
+    label: "待处理任务",
     value: "1 笔",
     icon: Zap,
     accent: "bg-amber-50 text-amber-600",
@@ -594,69 +600,10 @@ function StatsCards() {
 }
 
 function RechargeTasks({
-  onViewProgress,
-  onUploadReceipt,
-  onViewLedger,
   onViewDetail,
 }: {
-  onViewProgress: (task: Task) => void;
-  onUploadReceipt: (task: Task) => void;
-  onViewLedger: (task: Task) => void;
   onViewDetail: (task: Task) => void;
 }) {
-  // Determine operations per task status
-  function getOperations(task: Task) {
-    const node = task.node;
-    switch (node) {
-      case "pending_audit":
-        // 客户无需操作，等待米播内部审核
-        return { secondary: null, detail: true };
-      case "audit_rejected":
-        // 修改申请（主操作）+ 查看原因（次操作）
-        return {
-          primary: { label: "修改申请", icon: <FileText className="h-3 w-3" />, highlight: true },
-          secondary: { label: "查看原因", icon: <ShieldAlert className="h-3 w-3" />, highlight: false, danger: true },
-          detail: true,
-        };
-      case "pending_payment":
-        // 上传回单（主操作）+ 查看收款信息（次操作）
-        return {
-          primary: { label: "上传回单", icon: <Upload className="h-3 w-3" />, highlight: true, isUpload: true },
-          secondary: { label: "收款信息", icon: <Search className="h-3 w-3" />, highlight: false },
-          detail: true,
-        };
-      case "pending_confirm":
-        // 客户已上传回单，等待财务确认
-        return {
-          primary: { label: "查看回单", icon: <Eye className="h-3 w-3" />, highlight: false },
-          detail: true,
-        };
-      case "transferring":
-        // 客户无需操作，等待平台转账完成
-        return {
-          primary: { label: "查看进度", icon: <ArrowUpRight className="h-3 w-3" />, isProgress: true },
-          detail: true,
-        };
-      case "completed":
-        // 查看流水优先级更高
-        return {
-          primary: { label: "查看流水", icon: <FileText className="h-3 w-3" />, isLedger: true },
-          detail: true,
-        };
-      case "transfer_error":
-        // 补充回单（主操作，橙色/红色强调）+ 查看原因（次操作）
-        return {
-          primary: { label: "补充回单", icon: <Upload className="h-3 w-3" />, highlight: true, danger: true, isUpload: true },
-          secondary: { label: "查看原因", icon: <ShieldAlert className="h-3 w-3" />, danger: true },
-          detail: true,
-        };
-      case "cancelled":
-        return { secondary: null, detail: true };
-      default:
-        return { detail: true };
-    }
-  }
-
   return (
     <Card className="border-border/60 shadow-sm">
       {/* ── Header ─────────────────────────────────────── */}
@@ -669,7 +616,7 @@ function RechargeTasks({
               </div>
               <CardTitle className="text-base font-semibold">充值任务看板</CardTitle>
             </div>
-            <CardDescription>最近充值任务及待处理事项</CardDescription>
+            <CardDescription>查看最近充值任务及处理进度</CardDescription>
           </div>
           <div className="pt-2 sm:pt-0">
             <Button variant="ghost" size="sm" className="gap-1 text-primary" asChild>
@@ -688,15 +635,15 @@ function RechargeTasks({
           {taskSummary.map((item) => (
             <div
               key={item.label}
-              className="rounded-xl border border-border/60 bg-sapphire-subtle p-4"
+              className="rounded-xl border border-border/60 bg-sapphire-subtle p-3"
             >
               <div className="flex items-center gap-2">
-                <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${item.accent}`}>
-                  <item.icon className="h-3.5 w-3.5" />
+                <div className={`flex h-6 w-6 items-center justify-center rounded-md ${item.accent}`}>
+                  <item.icon className="h-3 w-3" />
                 </div>
                 <span className="text-xs text-muted-foreground">{item.label}</span>
               </div>
-              <p className="mt-2 text-lg font-bold tracking-tight text-foreground">
+              <p className="mt-1.5 text-lg font-bold tracking-tight text-foreground">
                 {item.value}
               </p>
             </div>
@@ -712,10 +659,13 @@ function RechargeTasks({
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="whitespace-nowrap font-semibold">充值单号</TableHead>
-                <TableHead className="whitespace-nowrap font-semibold">星图账户</TableHead>
-                <TableHead className="whitespace-nowrap text-right font-semibold">充值金额</TableHead>
-                <TableHead className="whitespace-nowrap font-semibold">当前节点</TableHead>
-                <TableHead className="whitespace-nowrap font-semibold">待处理方</TableHead>
+                <TableHead className="whitespace-nowrap font-semibold min-w-[180px]">账户信息</TableHead>
+                <TableHead className="whitespace-nowrap font-semibold min-w-[170px]">金额信息</TableHead>
+                <TableHead className="whitespace-nowrap font-semibold min-w-[200px]">当前节点</TableHead>
+                <TableHead className="whitespace-nowrap font-semibold">付款凭证</TableHead>
+                <TableHead className="whitespace-nowrap font-semibold">付款时间</TableHead>
+                <TableHead className="whitespace-nowrap font-semibold">充值用途</TableHead>
+                <TableHead className="whitespace-nowrap font-semibold">是否特批</TableHead>
                 <TableHead className="whitespace-nowrap font-semibold">提交时间</TableHead>
                 <TableHead className="whitespace-nowrap font-semibold">操作</TableHead>
               </TableRow>
@@ -724,120 +674,158 @@ function RechargeTasks({
               {tasks.map((task) => {
                 const node = nodeStatusMap[task.node];
                 const isCompleted = task.node === "completed";
-                const isError = task.node === "transfer_error";
-                const ops = getOperations(task);
+                const isError = task.node === "transfer_error" || task.node === "audit_rejected";
 
                 return (
-                  <TableRow key={task.id} className="h-16">
-                    {/* 充值单号 + 进度条 */}
-                    <TableCell className="whitespace-nowrap">
+                  <TableRow key={task.id}>
+                    {/* 1. 充值单号 */}
+                    <TableCell className="whitespace-nowrap align-top py-4">
+                      <span className="font-mono text-sm font-medium text-foreground">{task.id}</span>
+                    </TableCell>
+
+                    {/* 2. 账户信息 —— 三行展示 */}
+                    <TableCell className="whitespace-nowrap py-3">
                       <div className="space-y-1">
-                        <span className="font-medium text-foreground">{task.id}</span>
                         <div className="flex items-center gap-1.5">
-                          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-                            <div
-                              className={`h-full rounded-full transition-all ${
-                                isCompleted
-                                  ? "bg-emerald-500"
-                                  : isError
-                                    ? "bg-red-500"
-                                    : "bg-primary"
-                              }`}
-                              style={{ width: `${(task.step / task.totalSteps) * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-[10px] text-muted-foreground">
-                            第 {task.step}/{task.totalSteps} 步
-                          </span>
+                          <Badge className="h-4 gap-0.5 border-blue-200 bg-blue-50 px-1 text-[10px] text-blue-700">
+                            星图
+                          </Badge>
+                          <span className="text-sm font-semibold text-foreground">{task.account}</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          账户 ID：{task.accountId}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          主体：{task.subject}
+                        </p>
+                      </div>
+                    </TableCell>
+
+                    {/* 3. 金额信息 —— 迷你卡片 */}
+                    <TableCell className="whitespace-nowrap py-3">
+                      <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+                        <div className="flex items-center justify-between gap-2 text-xs">
+                          <span className="text-muted-foreground">充值金额</span>
+                          <span className="font-semibold text-foreground">{task.amount}</span>
+                        </div>
+                        <div className="mt-1 flex items-center justify-between gap-2 text-xs">
+                          <span className="text-muted-foreground">折扣</span>
+                          <Badge className="h-4 gap-0.5 border-emerald-200 bg-emerald-50 px-1 text-[10px] text-emerald-700">
+                            {task.discount}
+                          </Badge>
+                        </div>
+                        <div className="mt-1.5 flex items-center justify-between gap-2 border-t border-border/40 pt-1.5">
+                          <span className="text-xs text-muted-foreground">实付金额</span>
+                          <span className="text-sm font-bold text-primary">{task.payableAmount}</span>
                         </div>
                       </div>
                     </TableCell>
-                    {/* 星图账户 */}
-                    <TableCell className="whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-7 w-7 border border-border">
-                          <AvatarFallback className="bg-sapphire-muted text-[10px] font-medium text-primary">
-                            {task.account.slice(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm">{task.account}</span>
+
+                    {/* 4. 当前节点 —— 状态标签 + 5段进度条 + 步骤说明 */}
+                    <TableCell className="whitespace-nowrap py-3">
+                      <div className="space-y-2">
+                        {/* Status badge */}
+                        <Badge variant="outline" className={`gap-1 text-xs ${node.className}`}>
+                          {node.icon}
+                          {node.label}
+                        </Badge>
+
+                        {/* 5-segment progress bar */}
+                        <div className="flex items-center gap-0.5">
+                          {stepLabels.map((stepLabel, i) => {
+                            const stepNum = i + 1;
+                            let segClass = "bg-muted";
+                            if (stepNum < task.step) segClass = "bg-emerald-400";
+                            else if (stepNum === task.step) segClass = isError ? "bg-red-500" : "bg-primary";
+                            if (isCompleted && stepNum === task.step) segClass = "bg-emerald-500";
+
+                            return (
+                              <div
+                                key={stepLabel}
+                                className="group relative flex-1"
+                                title={stepLabel}
+                              >
+                                <div className={`h-1.5 w-full rounded-full ${segClass}`} />
+                                <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100">
+                                  {stepLabel}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Step label */}
+                        <p className={`text-[11px] font-medium ${isError ? "text-destructive" : isCompleted ? "text-emerald-600" : "text-muted-foreground"}`}>
+                          第 {task.step}/{task.totalSteps} 步
+                          {isError
+                            ? `｜${node.label}，请查看详情`
+                            : isCompleted
+                              ? `｜充值完成`
+                              : `｜${node.label}中`}
+                        </p>
                       </div>
                     </TableCell>
-                    {/* 充值金额 */}
-                    <TableCell className="whitespace-nowrap text-right font-semibold text-foreground">
-                      {task.amount}
+
+                    {/* 5. 付款凭证 */}
+                    <TableCell className="whitespace-nowrap py-4">
+                      {task.paymentReceipt ? (
+                        <button className="flex items-center gap-1.5 text-xs text-primary hover:underline">
+                          <FileText className="h-3.5 w-3.5" />
+                          {task.paymentReceipt}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">未上传</span>
+                      )}
                     </TableCell>
-                    {/* 当前节点 */}
-                    <TableCell className="whitespace-nowrap">
-                      <Badge
-                        variant="outline"
-                        className={`gap-1 text-xs ${node.className}`}
-                      >
-                        {node.icon}
-                        {node.label}
+
+                    {/* 6. 付款时间 */}
+                    <TableCell className="whitespace-nowrap py-4">
+                      <span className="text-xs text-muted-foreground">
+                        {task.paymentTime ?? "—"}
+                      </span>
+                    </TableCell>
+
+                    {/* 7. 充值用途 */}
+                    <TableCell className="whitespace-nowrap py-4">
+                      <Badge variant="outline" className="border-border text-xs font-normal text-muted-foreground">
+                        {task.purpose}
                       </Badge>
                     </TableCell>
-                    {/* 待处理方 */}
-                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                      {task.handler}
+
+                    {/* 8. 是否特批 */}
+                    <TableCell className="whitespace-nowrap py-4">
+                      {task.isSpecialApproval ? (
+                        <div className="group relative">
+                          <Badge className="gap-1 border-amber-200 bg-amber-50 text-xs text-amber-700">
+                            特批
+                          </Badge>
+                          {task.specialApprovalNote && (
+                            <span className="pointer-events-none absolute -top-8 left-0 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100">
+                              {task.specialApprovalNote}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">否</span>
+                      )}
                     </TableCell>
-                    {/* 提交时间 */}
-                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                      {task.time}
+
+                    {/* 9. 提交时间 */}
+                    <TableCell className="whitespace-nowrap py-4">
+                      <span className="text-xs text-muted-foreground">{task.time}</span>
                     </TableCell>
-                    {/* 操作 */}
-                    <TableCell className="whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        {/* Primary action */}
-                        {ops.primary && (
-                          <Button
-                            size="sm"
-                            variant={ops.primary.highlight ? "default" : "ghost"}
-                            className={`h-7 gap-1 text-xs ${
-                              ops.primary.highlight
-                                ? ops.primary.danger
-                                  ? "bg-amber-600 hover:bg-amber-700"
-                                  : "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
-                                : ops.primary.danger
-                                  ? "text-destructive hover:text-destructive"
-                                  : "text-primary hover:text-primary"
-                            }`}
-                            onClick={() => {
-                              if (ops.primary?.isProgress) onViewProgress(task);
-                              else if (ops.primary?.isUpload) onUploadReceipt(task);
-                              else if (ops.primary?.isLedger) onViewLedger(task);
-                            }}
-                          >
-                            {ops.primary.icon}
-                            {ops.primary.label}
-                          </Button>
-                        )}
-                        {/* Secondary action */}
-                        {ops.secondary && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={`h-7 gap-1 text-xs ${
-                              ops.secondary.danger
-                                ? "text-destructive hover:text-destructive"
-                                : "text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            {ops.secondary.icon}
-                            {ops.secondary.label}
-                          </Button>
-                        )}
-                        {/* Detail button - always present */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
-                          onClick={() => onViewDetail(task)}
-                        >
-                          <Eye className="h-3 w-3" />
-                          查看详情
-                        </Button>
-                      </div>
+
+                    {/* 10. 操作 */}
+                    <TableCell className="whitespace-nowrap py-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => onViewDetail(task)}
+                      >
+                        <Eye className="h-3 w-3" />
+                        查看详情
+                      </Button>
                     </TableCell>
                   </TableRow>
                 );
@@ -1033,109 +1021,20 @@ function AccountOverview({ onRecharge, onAddAccount }: { onRecharge: () => void;
   );
 }
 
-function OperationTips() {
-  const steps = [
-    "提交申请",
-    "审核通过",
-    "打款上传回单",
-    "财务确认",
-    "平台转账",
-    "充值完成",
-  ];
-
-  return (
-    <Card className="border-border/60 shadow-sm">
-      <CardHeader className="pb-2">
-        <div className="flex items-center gap-2">
-          <Info className="h-4 w-4 text-primary" />
-          <CardTitle className="text-base font-semibold">操作提示</CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-foreground">充值流程</p>
-          <div className="relative space-y-2 pl-2">
-            {steps.map((step, index) => (
-              <div key={step} className="flex items-center gap-3">
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sapphire-muted text-xs font-medium text-primary">
-                  {index + 1}
-                </div>
-                <span className="text-sm text-muted-foreground">{step}</span>
-                {index < steps.length - 1 && (
-                  <ArrowRight className="ml-auto h-3.5 w-3.5 text-border" />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <div className="flex items-start gap-3">
-            <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-            <div>
-              <p className="text-sm font-medium text-amber-800">到账时间提醒</p>
-              <p className="mt-1 text-xs leading-relaxed text-amber-700">
-                下午 5 点后提交的充值申请，财务确认及平台转账可能顺延至下一个工作日处理，请提前安排充值时间。
-              </p>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 function Index() {
   const navigate = useNavigate();
   const [rechargeModalOpen, setRechargeModalOpen] = useState(false);
-
-  // Drawer / Modal states
-  const [progressDrawerOpen, setProgressDrawerOpen] = useState(false);
-  const [progressTask, setProgressTask] = useState<Task | null>(null);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [detailTask, setDetailTask] = useState<Task | null>(null);
-  const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [uploadTask, setUploadTask] = useState<Task | null>(null);
   const [addAccountModalOpen, setAddAccountModalOpen] = useState(false);
 
   const handleRecharge = () => setRechargeModalOpen(true);
   const handleAddAccount = () => setAddAccountModalOpen(true);
 
-  // Callbacks for task operations
-  const handleViewProgress = useCallback((task: Task) => {
-    setProgressTask(task);
-    setProgressDrawerOpen(true);
-  }, []);
-
-  const handleUploadReceipt = useCallback((task: Task) => {
-    setUploadTask(task);
-    setUploadModalOpen(true);
-  }, []);
-
-  const handleViewLedger = useCallback((_task: Task) => {
-    navigate({ to: "/transaction-ledger" });
-  }, [navigate]);
-
   const handleViewDetail = useCallback((task: Task) => {
     setDetailTask(task);
     setDetailDrawerOpen(true);
   }, []);
-
-  // Build drawer/modal info from selected task
-  const buildProgressTaskInfo = (t: Task | null): TaskInfo | null => {
-    if (!t) return null;
-    const node = nodeStatusMap[t.node];
-    return {
-      id: t.id,
-      account: t.account,
-      amount: t.amount,
-      node: t.node,
-      nodeLabel: node?.label ?? "",
-      nodeClassName: node?.className ?? "",
-      handler: t.handler,
-      step: t.step,
-    };
-  };
 
   const buildDetailTaskInfo = (t: Task | null): DetailTaskInfo | null => {
     if (!t) return null;
@@ -1168,36 +1067,12 @@ function Index() {
     };
   };
 
-  const buildReceiptTaskInfo = (t: Task | null): ReceiptTaskInfo | null => {
-    if (!t) return null;
-    return {
-      id: t.id,
-      account: t.account,
-      amount: t.amount,
-      subject: t.subject,
-      bankName: t.bankName ?? "",
-      bankAccount: t.bankAccount ?? "",
-      payableAmount: t.payableAmount,
-    };
-  };
-
   return (
     <div className="space-y-6 p-6">
       <WelcomeSection onRecharge={handleRecharge} />
       <StatsCards />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <RechargeTasks
-            onViewProgress={handleViewProgress}
-            onUploadReceipt={handleUploadReceipt}
-            onViewLedger={handleViewLedger}
-            onViewDetail={handleViewDetail}
-          />
-        </div>
-        <div>
-          <OperationTips />
-        </div>
-      </div>
+
+      <RechargeTasks onViewDetail={handleViewDetail} />
 
       <AccountOverview onRecharge={handleRecharge} onAddAccount={handleAddAccount} />
 
@@ -1207,41 +1082,13 @@ function Index() {
         onOpenChange={setRechargeModalOpen}
       />
 
-      <TaskProgressDrawer
-        open={progressDrawerOpen}
-        onOpenChange={setProgressDrawerOpen}
-        task={buildProgressTaskInfo(progressTask)}
-        onViewDetail={() => {
-          setProgressDrawerOpen(false);
-          if (progressTask) handleViewDetail(progressTask);
-        }}
-      />
-
-      <UploadReceiptModal
-        open={uploadModalOpen}
-        onOpenChange={setUploadModalOpen}
-        task={buildReceiptTaskInfo(uploadTask)}
-      />
-
       <TaskDetailDrawer
         open={detailDrawerOpen}
         onOpenChange={setDetailDrawerOpen}
         task={buildDetailTaskInfo(detailTask)}
-        onViewProgress={() => {
-          setDetailDrawerOpen(false);
-          if (detailTask) {
-            setTimeout(() => handleViewProgress(detailTask), 100);
-          }
-        }}
         onViewLedger={() => {
           setDetailDrawerOpen(false);
           navigate({ to: "/transaction-ledger" });
-        }}
-        onUploadReceipt={() => {
-          setDetailDrawerOpen(false);
-          if (detailTask) {
-            setTimeout(() => handleUploadReceipt(detailTask), 100);
-          }
         }}
       />
 
