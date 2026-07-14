@@ -18,7 +18,7 @@ import {
 
 const menuItems = [
   { title: "注册 / 登录", url: "/login", icon: LogIn },
-  { title: "充值", url: "/recharge", icon: Wallet },
+  { title: "充值任务", url: "/recharge", icon: Wallet },
   { title: "余额流水看板", url: "/dashboard", icon: BarChart3 },
 ];
 
