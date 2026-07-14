@@ -38,6 +38,8 @@ import { AddAccountModal } from "@/components/AddAccountModal";
 import { TaskDetailDrawer, type DetailTaskInfo } from "@/components/TaskDetailDrawer";
 import { UploadPaymentModal, type PaymentTaskInfo, type UploadMode } from "@/components/UploadPaymentModal";
 import { CancelOrderModal, type CancelTaskInfo } from "@/components/CancelOrderModal";
+import { AccountLedgerDrawer, type LedgerAccountInfo } from "@/components/AccountLedgerDrawer";
+import { AccountDetailDrawer, type DetailAccountInfo } from "@/components/AccountDetailDrawer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -110,6 +112,7 @@ interface Task {
   node: string;
   rechargeType: "regular" | "special";
   isDraft?: boolean;
+  accountType?: string;
   handler: string;
   statusDescription: string;
   step: number;
@@ -229,7 +232,7 @@ function getStepTooltip(task: Task, index: number, isSpecial: boolean): string {
 const tasks: Task[] = [
   // Row 0: Draft — pinned top
   {
-    id: "RC-2026-07006", account: "云岚主账户", accountId: "ST-10086101", subject: "上海云岚科技有限公司",
+    id: "RC-2026-07006", account: "云岚品牌中心", accountType: "主账户", accountId: "ST-10086101", subject: "上海云岚科技有限公司",
     amount: "¥100,000.00", payableAmount: "¥98,000.00", discount: "98 折",
     node: "draft", rechargeType: "regular", isDraft: true,
     handler: "—", statusDescription: "草稿，尚未正式提交",
@@ -237,7 +240,7 @@ const tasks: Task[] = [
   },
   // Row 1: Regular, paid, transferring
   {
-    id: "RC-2026-07001", account: "云岚主账户", accountId: "ST-10086101", subject: "上海云岚科技有限公司",
+    id: "RC-2026-07001", account: "云岚品牌中心", accountType: "主账户", accountId: "ST-10086101", subject: "上海云岚科技有限公司",
     amount: "¥50,000.00", payableAmount: "¥49,000.00", discount: "98 折",
     node: "transferring", rechargeType: "regular",
     handler: "米播平台媒介", statusDescription: "财务已确认到账，正在进行平台转账处理",
@@ -249,7 +252,7 @@ const tasks: Task[] = [
   },
   // Row 2: Regular, submitted, no receipt
   {
-    id: "RC-2026-07002", account: "云岚投放账户 A", accountId: "ST-10086102", subject: "上海云岚科技有限公司",
+    id: "RC-2026-07002", account: "云岚效果投放", accountType: "投放账户", accountId: "ST-10086102", subject: "上海云岚科技有限公司",
     amount: "¥120,000.00", payableAmount: "¥117,600.00", discount: "98 折",
     node: "pending_audit", rechargeType: "regular",
     handler: "米播平台媒介", statusDescription: "客户已提交充值申请，等待上传付款凭证",
@@ -257,10 +260,10 @@ const tasks: Task[] = [
   },
   // Row 3: Regular, completed
   {
-    id: "RC-2026-07003", account: "云岚运营账户", accountId: "ST-10086103", subject: "上海云岚科技有限公司",
+    id: "RC-2026-07003", account: "云岚内容增长", accountType: "运营账户", accountId: "ST-10086103", subject: "上海云岚科技有限公司",
     amount: "¥30,000.00", payableAmount: "¥29,400.00", discount: "98 折",
     node: "completed", rechargeType: "regular",
-    handler: "—", statusDescription: "充值已完成，资金已到云岚运营账户",
+    handler: "—", statusDescription: "充值已完成，资金已到云岚内容增长",
     step: 5, totalSteps: 5, time: "2026-07-09 16:48", purpose: "助推投流", orderCompleted: true,
     paymentAmount: "¥29,400.00", paymentTime: "2026-07-09 17:00", paymentAccountName: "上海云岚科技有限公司",
     paymentBank: "招商银行上海分行", paymentReceipt: "回单_20260709.pdf",
@@ -270,7 +273,7 @@ const tasks: Task[] = [
   },
   // Row 4: Special, uploaded pending, approved
   {
-    id: "RC-2026-07004", account: "云岚投放账户 B", accountId: "ST-10086104", subject: "上海云岚科技有限公司",
+    id: "RC-2026-07004", account: "云岚新品推广", accountType: "投放账户", accountId: "ST-10086104", subject: "上海云岚科技有限公司",
     amount: "¥80,000.00", payableAmount: "¥78,400.00", discount: "98 折",
     node: "sp_approved", rechargeType: "special",
     handler: "米播", statusDescription: "特批已通过，客户已上传付款凭证，等待财务确认",
@@ -281,7 +284,7 @@ const tasks: Task[] = [
   },
   // Row 5: Special, completed, no receipt → order not complete
   {
-    id: "RC-2026-07005", account: "云岚品牌账户", accountId: "ST-10086105", subject: "上海云岚科技有限公司",
+    id: "RC-2026-07005", account: "云岚达人合作", accountType: "品牌账户", accountId: "ST-10086105", subject: "上海云岚科技有限公司",
     amount: "¥40,000.00", payableAmount: "¥39,200.00", discount: "98 折",
     node: "sp_completed", rechargeType: "special",
     handler: "—", statusDescription: "特批充值已完成，等待客户按承诺时间付款并上传凭证",
@@ -289,7 +292,7 @@ const tasks: Task[] = [
   },
   // Row 6: Special, completed with receipt → order complete
   {
-    id: "RC-2026-07006", account: "云岚品牌账户 C", accountId: "ST-10086106", subject: "上海云岚科技有限公司",
+    id: "RC-2026-07006", account: "云岚达人合作", accountType: "品牌账户", accountId: "ST-10086106", subject: "上海云岚科技有限公司",
     amount: "¥60,000.00", payableAmount: "¥58,800.00", discount: "98 折",
     node: "sp_completed", rechargeType: "special",
     handler: "—", statusDescription: "特批充值已完成，客户已上传付款凭证",
@@ -309,7 +312,7 @@ const taskSummary = [
 
 const accounts = [
   {
-    name: "云岚主账户",
+    name: "云岚品牌中心", accountType: "主账户",
     accountId: "ST-10086101",
     subject: "上海云岚科技有限公司",
     balance: "¥286,500.00",
@@ -319,7 +322,7 @@ const accounts = [
     updatedAt: "2026-07-10 14:32",
   },
   {
-    name: "云岚投放账户 A",
+    name: "云岚效果投放", accountType: "投放账户",
     accountId: "ST-10086102",
     subject: "上海云岚科技有限公司",
     balance: "¥142,300.00",
@@ -329,7 +332,7 @@ const accounts = [
     updatedAt: "2026-07-10 14:15",
   },
   {
-    name: "云岚运营账户",
+    name: "云岚内容增长", accountType: "运营账户",
     accountId: "ST-10086103",
     subject: "上海云岚科技有限公司",
     balance: "¥58,200.00",
@@ -339,6 +342,13 @@ const accounts = [
     updatedAt: "2026-07-10 13:58",
   },
 ];
+
+const accountTypeClass: Record<string, string> = {
+  "主账户": "border-blue-200 bg-blue-50 text-blue-700",
+  "投放账户": "border-emerald-200 bg-emerald-50 text-emerald-700",
+  "运营账户": "border-purple-200 bg-purple-50 text-purple-700",
+  "品牌账户": "border-amber-200 bg-amber-50 text-amber-700",
+};
 
 const accountStatusMap: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive"; className: string }> = {
   "正常": {
@@ -387,21 +397,21 @@ const accountSummary = [
 ];
 
 const balanceBreakdown = [
-  { account: "云岚主账户", amount: "¥286,500.00" },
-  { account: "云岚投放账户 A", amount: "¥142,300.00" },
-  { account: "云岚运营账户", amount: "¥58,200.00" },
+  { account: "云岚品牌中心", amount: "¥286,500.00" },
+  { account: "云岚效果投放", amount: "¥142,300.00" },
+  { account: "云岚内容增长", amount: "¥58,200.00" },
 ];
 
 const rechargeBreakdown = [
-  { account: "云岚主账户", amount: "¥100,000.00" },
-  { account: "云岚投放账户 A", amount: "¥80,000.00" },
-  { account: "云岚运营账户", amount: "¥20,000.00" },
+  { account: "云岚品牌中心", amount: "¥100,000.00" },
+  { account: "云岚效果投放", amount: "¥80,000.00" },
+  { account: "云岚内容增长", amount: "¥20,000.00" },
 ];
 
 const spendBreakdown = [
-  { account: "云岚主账户", amount: "¥68,000.00" },
-  { account: "云岚投放账户 A", amount: "¥56,800.00" },
-  { account: "云岚运营账户", amount: "¥32,000.00" },
+  { account: "云岚品牌中心", amount: "¥68,000.00" },
+  { account: "云岚效果投放", amount: "¥56,800.00" },
+  { account: "云岚内容增长", amount: "¥32,000.00" },
 ];
 
 const taskBreakdown = [
@@ -755,6 +765,9 @@ function RechargeTasks({
                         <div className="flex items-center gap-1.5">
                           <Badge className="h-4 gap-0.5 border-blue-200 bg-blue-50 px-1 text-[10px] text-blue-700">星图</Badge>
                           <span className="text-sm font-semibold text-foreground">{task.account}</span>
+                          {task.accountType && (
+                            <Badge className={`h-4 px-1 text-[10px] ${accountTypeClass[task.accountType] ?? "border-gray-200 bg-gray-50 text-gray-600"}`}>{task.accountType}</Badge>
+                          )}
                         </div>
                         <p className="text-[11px] text-muted-foreground">账户 ID：{task.accountId}</p>
                         <p className="text-[11px] text-muted-foreground">主体：{task.subject}</p>
@@ -911,7 +924,11 @@ function RechargeTasks({
   );
 }
 
-function AccountOverview({ onRecharge, onAddAccount }: { onRecharge: () => void; onAddAccount: () => void }) {
+function AccountOverview({ onRecharge, onAddAccount, onViewLedger, onViewDetail }: {
+  onRecharge: () => void; onAddAccount: () => void;
+  onViewLedger: (account: typeof accounts[0]) => void;
+  onViewDetail: (account: typeof accounts[0]) => void;
+}) {
   return (
     <Card className="border-border/60 shadow-sm">
       {/* ── Header ─────────────────────────────────────── */}
@@ -991,6 +1008,9 @@ function AccountOverview({ onRecharge, onAddAccount }: { onRecharge: () => void;
                         <div className="flex items-center gap-1.5">
                           <Badge className="h-4 gap-0.5 border-blue-200 bg-blue-50 px-1 text-[10px] text-blue-700">星图</Badge>
                           <span className="text-sm font-semibold text-foreground">{account.name}</span>
+                          {(account as any).accountType && (
+                            <Badge className={`h-4 px-1 text-[10px] ${accountTypeClass[(account as any).accountType] ?? "border-gray-200 bg-gray-50 text-gray-600"}`}>{(account as any).accountType}</Badge>
+                          )}
                         </div>
                         <p className="text-[11px] text-muted-foreground">账户 ID：{account.accountId}</p>
                         <p className="text-[11px] text-muted-foreground">主体：{account.subject}</p>
@@ -1029,10 +1049,10 @@ function AccountOverview({ onRecharge, onAddAccount }: { onRecharge: () => void;
                             </span>
                           </div>
                         )}
-                        <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground w-full justify-center">
+                        <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground w-full justify-center" onClick={() => onViewLedger(account)}>
                           <FileText className="mr-1 h-3 w-3" />查看流水
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground w-full justify-center">
+                        <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground w-full justify-center" onClick={() => onViewDetail(account)}>
                           <Eye className="mr-1 h-3 w-3" />详情
                         </Button>
                       </div>
@@ -1059,6 +1079,10 @@ function Index() {
   const [uploadMode, setUploadMode] = useState<UploadMode>("upload");
   const [cancelOrderOpen, setCancelOrderOpen] = useState(false);
   const [cancelTask, setCancelTask] = useState<Task | null>(null);
+  const [ledgerOpen, setLedgerOpen] = useState(false);
+  const [ledgerAccount, setLedgerAccount] = useState<typeof accounts[0] | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailAccount, setDetailAccount] = useState<typeof accounts[0] | null>(null);
 
   const handleRecharge = () => setRechargeModalOpen(true);
   const handleAddAccount = () => setAddAccountModalOpen(true);
@@ -1096,6 +1120,26 @@ function Index() {
     setCancelTask(task);
     setCancelOrderOpen(true);
   }, []);
+
+  const handleViewLedger = useCallback((account: typeof accounts[0]) => {
+    setLedgerAccount(account);
+    setLedgerOpen(true);
+  }, []);
+
+  const handleViewAccountDetail = useCallback((account: typeof accounts[0]) => {
+    setDetailAccount(account);
+    setDetailOpen(true);
+  }, []);
+
+  const buildLedgerAccountInfo = (a: typeof accounts[0] | null): LedgerAccountInfo | null => {
+    if (!a) return null;
+    return { name: a.name, accountType: (a as any).accountType ?? "", accountId: a.accountId, subject: a.subject, balance: a.balance, updatedAt: a.updatedAt };
+  };
+
+  const buildDetailAccountInfo = (a: typeof accounts[0] | null): DetailAccountInfo | null => {
+    if (!a) return null;
+    return { name: a.name, accountType: (a as any).accountType ?? "", accountId: a.accountId, subject: a.subject, balance: a.balance, monthlyRecharge: a.monthlyRecharge, monthlySpend: a.monthlySpend, status: a.status, updatedAt: a.updatedAt };
+  };
 
   const buildDetailTaskInfo = (t: Task | null): DetailTaskInfo | null => {
     if (!t) return null;
@@ -1135,7 +1179,7 @@ function Index() {
 
       <RechargeTasks onViewDetail={handleViewDetail} onUploadPayment={handleUploadPayment} onRecharge={handleRecharge} onCancelOrder={handleCancelOrder} onContinueSubmit={handleContinueSubmit} />
 
-      <AccountOverview onRecharge={handleRecharge} onAddAccount={handleAddAccount} />
+      <AccountOverview onRecharge={handleRecharge} onAddAccount={handleAddAccount} onViewLedger={handleViewLedger} onViewDetail={handleViewAccountDetail} />
 
       {/* ── Modals & Drawers ────────────────────────────── */}
       <RechargeModal
@@ -1169,6 +1213,23 @@ function Index() {
         open={cancelOrderOpen}
         onOpenChange={setCancelOrderOpen}
         task={buildCancelTaskInfo(cancelTask)}
+      />
+
+      <AccountLedgerDrawer
+        open={ledgerOpen}
+        onOpenChange={setLedgerOpen}
+        account={buildLedgerAccountInfo(ledgerAccount)}
+      />
+
+      <AccountDetailDrawer
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        account={buildDetailAccountInfo(detailAccount)}
+        onRecharge={handleRecharge}
+        onViewLedger={() => {
+          setDetailOpen(false);
+          setTimeout(() => { setLedgerAccount(detailAccount); setLedgerOpen(true); }, 100);
+        }}
       />
     </div>
   );

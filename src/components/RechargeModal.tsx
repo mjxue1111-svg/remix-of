@@ -36,6 +36,7 @@ import {
 
 interface Account {
   name: string;
+  accountType: string;
   accountId: string;
   subject: string;
   balance: string;
@@ -48,12 +49,19 @@ interface RechargeModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const accountTypeClass: Record<string, string> = {
+  "主账户": "border-blue-200 bg-blue-50 text-blue-700",
+  "投放账户": "border-emerald-200 bg-emerald-50 text-emerald-700",
+  "运营账户": "border-purple-200 bg-purple-50 text-purple-700",
+  "品牌账户": "border-amber-200 bg-amber-50 text-amber-700",
+};
+
 // ── Data ───────────────────────────────────────────────────────────────────
 
 const accounts: Account[] = [
-  { name: "云岚主账户", accountId: "ST-10086101", subject: "上海云岚科技有限公司", balance: "¥286,500.00", status: "正常", updatedAt: "2026-07-10 14:32" },
-  { name: "云岚投放账户 A", accountId: "ST-10086102", subject: "上海云岚科技有限公司", balance: "¥142,300.00", status: "正常", updatedAt: "2026-07-10 14:15" },
-  { name: "云岚运营账户", accountId: "ST-10086103", subject: "上海云岚科技有限公司", balance: "¥58,200.00", status: "正常", updatedAt: "2026-07-10 13:58" },
+  { name: "云岚品牌中心", accountType: "主账户", accountId: "ST-10086101", subject: "上海云岚科技有限公司", balance: "¥286,500.00", status: "正常", updatedAt: "2026-07-10 14:32" },
+  { name: "云岚效果投放", accountType: "投放账户", accountId: "ST-10086102", subject: "上海云岚科技有限公司", balance: "¥142,300.00", status: "正常", updatedAt: "2026-07-10 14:15" },
+  { name: "云岚内容增长", accountType: "运营账户", accountId: "ST-10086103", subject: "上海云岚科技有限公司", balance: "¥58,200.00", status: "正常", updatedAt: "2026-07-10 13:58" },
 ];
 
 const purposes = ["达人采买", "广告投放", "助推投流", "其他"];
@@ -111,6 +119,7 @@ function AccountInfoCard({ account }: { account: Account }) {
           <div className="flex items-center gap-1.5">
             <Badge className="h-4 gap-0.5 border-blue-200 bg-blue-50 px-1 text-[10px] text-blue-700">星图</Badge>
             <p className="text-sm font-semibold text-foreground">{account.name}</p>
+            <Badge className={`h-4 px-1 text-[10px] ${accountTypeClass[account.accountType] ?? "border-gray-200 bg-gray-50 text-gray-600"}`}>{account.accountType}</Badge>
           </div>
           <p className="text-xs text-muted-foreground">{account.accountId}</p>
         </div>
@@ -119,6 +128,7 @@ function AccountInfoCard({ account }: { account: Account }) {
         </Badge>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-border/60 pt-3 text-xs">
+        <div><span className="text-muted-foreground">账户类型</span><Badge className={`ml-1 h-4 px-1 text-[10px] ${accountTypeClass[account.accountType] ?? "border-gray-200 bg-gray-50 text-gray-600"}`}>{account.accountType}</Badge></div>
         <div><span className="text-muted-foreground">账户主体</span><p className="font-medium text-foreground">{account.subject}</p></div>
         <div><span className="text-muted-foreground">当前余额</span><p className="font-semibold text-foreground">{account.balance}</p></div>
         <div><span className="text-muted-foreground">账户状态</span><p className="font-medium text-emerald-600">正常</p></div>
@@ -370,8 +380,9 @@ function FormStep({ onSuccess, onClose, onSaveDraft }: { onSuccess: (rechargeId:
                 <SelectContent>
                   {accounts.map((a) => (
                     <SelectItem key={a.accountId} value={a.accountId}>
-                      <div className="flex items-center gap-3 py-0.5">
+                      <div className="flex items-center gap-2 py-0.5">
                         <span className="font-medium text-foreground">{a.name}</span>
+                        <Badge className={`h-4 px-1 text-[10px] ${accountTypeClass[a.accountType] ?? "border-gray-200 bg-gray-50 text-gray-600"}`}>{a.accountType}</Badge>
                         <span className="text-xs text-muted-foreground">{a.accountId}</span>
                         <span className="ml-auto text-xs text-muted-foreground">余额 {a.balance}</span>
                       </div>

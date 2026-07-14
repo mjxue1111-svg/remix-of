@@ -49,7 +49,7 @@ const transactions = [
     type: "充值",
     typeKey: "recharge",
     amount: "+¥30,000.00",
-    account: "云岚运营账户",
+    account: "云岚内容增长",
     rechargeId: "RC-2026-07003",
     platformId: "XT20260709001",
     notes: "充值到账",
@@ -59,7 +59,7 @@ const transactions = [
     type: "消耗",
     typeKey: "spend",
     amount: "-¥5,000.00",
-    account: "云岚运营账户",
+    account: "云岚内容增长",
     rechargeId: "RC-2026-07003",
     platformId: "XT20260709002",
     notes: "达人采买消耗",
@@ -69,7 +69,7 @@ const transactions = [
     type: "消耗",
     typeKey: "spend",
     amount: "-¥12,000.00",
-    account: "云岚运营账户",
+    account: "云岚内容增长",
     rechargeId: "RC-2026-07003",
     platformId: "XT20260710001",
     notes: "广告投放消耗",
@@ -79,7 +79,7 @@ const transactions = [
     type: "转入",
     typeKey: "transfer_in",
     amount: "+¥8,000.00",
-    account: "云岚运营账户",
+    account: "云岚内容增长",
     rechargeId: "RC-2026-07003",
     platformId: "XT20260710002",
     notes: "账户间转入",
@@ -89,7 +89,7 @@ const transactions = [
     type: "消耗",
     typeKey: "spend",
     amount: "-¥15,000.00",
-    account: "云岚运营账户",
+    account: "云岚内容增长",
     rechargeId: "RC-2026-07003",
     platformId: "XT20260710003",
     notes: "助推投流消耗",
@@ -120,7 +120,7 @@ const typeConfig: Record<string, { className: string; icon: React.ReactNode }> =
 };
 
 const filterCard = {
-  account: "云岚运营账户",
+  account: "云岚内容增长",
   accountId: "ST-10086103",
   rechargeId: "RC-2026-07003",
   amount: "¥30,000.00",
@@ -158,7 +158,7 @@ function TransactionLedgerPage() {
       <div>
         <h1 className="text-xl font-bold tracking-tight text-foreground">余额流水看板</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          关联充值单 {filterCard.rechargeId} · 云岚运营账户流水明细
+          关联充值单 {filterCard.rechargeId} · 云岚内容增长流水明细
         </p>
       </div>
 
@@ -242,9 +242,9 @@ function TransactionLedgerPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">全部账户</SelectItem>
-            <SelectItem value="ST-10086101">云岚主账户</SelectItem>
-            <SelectItem value="ST-10086102">云岚投放账户 A</SelectItem>
-            <SelectItem value="ST-10086103">云岚运营账户</SelectItem>
+            <SelectItem value="ST-10086101">云岚品牌中心</SelectItem>
+            <SelectItem value="ST-10086102">云岚效果投放</SelectItem>
+            <SelectItem value="ST-10086103">云岚内容增长</SelectItem>
           </SelectContent>
         </Select>
         <Button size="sm" className="h-9 gap-1.5">
