@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 
-import { LogIn, Wallet, BarChart3, Hexagon } from "lucide-react";
+import { LogIn, Wallet, BarChart3, Hexagon, Sparkles } from "lucide-react";
 
 import {
   Sidebar,
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const menuItems = [
+  { title: "开始", url: "/start", icon: Sparkles },
   { title: "注册 / 登录", url: "/login", icon: LogIn },
   { title: "充值任务", url: "/recharge", icon: Wallet },
   { title: "余额流水看板", url: "/dashboard", icon: BarChart3 },
