@@ -91,6 +91,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "星图充值平台 - 客户端" },
+      { name: "twitter:description", content: "星图充值平台客户端首页，企业级充值管理后台。" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/62901c14-f378-4c10-a8bf-ddc70eaeba17/id-preview-3655cc0d--7c968358-03f1-459f-bac6-b2f4e8f309e2.lovable.app-1784048581460.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/62901c14-f378-4c10-a8bf-ddc70eaeba17/id-preview-3655cc0d--7c968358-03f1-459f-bac6-b2f4e8f309e2.lovable.app-1784048581460.png" },
     ],
     links: [
       {
