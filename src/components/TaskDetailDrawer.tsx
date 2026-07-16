@@ -28,13 +28,6 @@ import {
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-interface OperationLog {
-  time: string;
-  operator: string;
-  action: string;
-  notes: string;
-}
-
 export interface DetailTaskInfo {
   id: string;
   account: string;
@@ -48,7 +41,12 @@ export interface DetailTaskInfo {
   handler: string;
   statusDescription: string;
   time: string;
+  rechargeType: "regular" | "special";
+  step: number;
+  totalSteps: number;
+  isDraft?: boolean;
   // Payment info
+  paymentStatus?: string;
   paymentAmount?: string;
   paymentTime?: string;
   paymentAccountName?: string;
@@ -56,6 +54,8 @@ export interface DetailTaskInfo {
   paymentReceipt?: string;
   financeConfirmed?: boolean;
   financeConfirmedTime?: string;
+  errorReason?: string;
+  errorDescription?: string;
   // Platform transfer info
   transferStatus?: string;
   transferId?: string;
@@ -73,42 +73,203 @@ interface TaskDetailDrawerProps {
   onUploadReceipt?: () => void;
 }
 
-// ── Sample operation logs ──────────────────────────────────────────────────
+// ── Progress node types ────────────────────────────────────────────────────
 
-const sampleLogs: OperationLog[] = [
-  {
-    time: "2026-07-10 14:32",
-    operator: "客户 李明",
-    action: "提交申请",
-    notes: "提交充值申请，充值金额 ¥50,000.00",
-  },
-  {
-    time: "2026-07-10 14:40",
-    operator: "米播平台媒介",
-    action: "审核通过",
-    notes: "审核通过，已生成收款信息",
-  },
-  {
-    time: "2026-07-10 15:05",
-    operator: "客户 李明",
-    action: "上传回单",
-    notes: "已上传付款回单，付款金额 ¥49,000.00",
-  },
-  {
-    time: "2026-07-10 15:20",
-    operator: "米播财务",
-    action: "确认到账",
-    notes: "财务确认到账，已发起平台转账",
-  },
-  {
-    time: "2026-07-10 15:30",
-    operator: "米播平台媒介",
-    action: "发起转账",
-    notes: "平台媒介已发起转账至星图平台",
-  },
-];
+type NodeStatus = "completed" | "active" | "pending" | "rejected" | "error";
+
+interface ProgressNode {
+  name: string;
+  status: NodeStatus;
+  handlerName: string;
+  handlerRole: string;
+  handlerInitial: string;
+  time: string;
+  description: string;
+  rejectionReasons?: string[];
+  rejectionNote?: string;
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+const statusConfig: Record<NodeStatus, { dot: string; badge: string; label: string }> = {
+  completed: { dot: "border-emerald-500 bg-emerald-50", badge: "border-emerald-200 bg-emerald-50 text-emerald-700", label: "已完成" },
+  active: { dot: "border-blue-500 bg-blue-50", badge: "border-blue-200 bg-blue-50 text-blue-700", label: "进行中" },
+  pending: { dot: "border-gray-300 bg-gray-50", badge: "border-gray-200 bg-gray-50 text-gray-500", label: "未完成" },
+  rejected: { dot: "border-red-500 bg-red-50", badge: "border-red-200 bg-red-50 text-red-700", label: "已驳回" },
+  error: { dot: "border-red-500 bg-red-50", badge: "border-red-200 bg-red-50 text-red-700", label: "异常" },
+};
+
+function getRegularNodes(task: DetailTaskInfo): ProgressNode[] {
+  const s = task.isDraft ? 0 : task.step;
+  const isRejected = task.node === "audit_rejected";
+  const isTransferError = task.node === "transfer_error";
+
+  return [
+    {
+      name: "客户提交申请",
+      status: task.isDraft ? "pending" : s >= 1 ? "completed" : "active",
+      handlerName: "李明",
+      handlerRole: "客户",
+      handlerInitial: "李",
+      time: task.isDraft ? "—" : task.time,
+      description: task.isDraft
+        ? "客户已保存充值申请草稿，尚未正式提交。"
+        : `客户已提交充值申请，充值金额 ${task.amount}，客户应付金额 ${task.payableAmount}。`,
+    },
+    {
+      name: "米播审核",
+      status: isRejected ? "rejected" : s > 2 ? "completed" : s === 2 ? "active" : "pending",
+      handlerName: "赵航",
+      handlerRole: "米播平台",
+      handlerInitial: "赵",
+      time: s >= 2 ? "2026-07-10 14:40" : "—",
+      description: isRejected
+        ? "米播审核未通过，请查看驳回原因并修改后重新提交。"
+        : s > 2
+          ? "米播已核对客户信息、账户信息、充值金额、付款信息及凭证。"
+          : s === 2
+            ? "米播正在审核客户提交的充值申请信息。"
+            : "等待米播审核客户信息、账户信息及金额信息。",
+      rejectionReasons: isRejected ? ["信息不一致", "凭证问题"] : undefined,
+      rejectionNote: isRejected ? "请核对账户主体信息并重新上传清晰凭证。" : undefined,
+    },
+    {
+      name: "米播进行账户充值",
+      status: isTransferError ? "error" : s > 3 ? "completed" : s === 3 ? "active" : "pending",
+      handlerName: "赵航",
+      handlerRole: "米播平台",
+      handlerInitial: "赵",
+      time: s >= 3 ? "2026-07-10 15:20" : "—",
+      description: isTransferError
+        ? "账户充值处理出现异常，请联系米播平台处理。"
+        : s > 3
+          ? "米播已完成内部财务确认、平台付款、到账核验及账户充值等操作。"
+          : s === 3
+            ? "米播正在进行账户充值处理，包含内部财务确认、平台付款、到账核验及账户充值等操作。"
+            : "等待米播完成内部财务确认、付款及账户充值处理。",
+    },
+    {
+      name: "充值完成",
+      status: s >= 4 ? "completed" : "pending",
+      handlerName: "系统",
+      handlerRole: "系统",
+      handlerInitial: "系",
+      time: s >= 4 ? "2026-07-10 16:30" : "—",
+      description: s >= 4
+        ? "账户充值已完成，订单状态更新为已完成，客户账户余额已更新。"
+        : "等待米播完成充值处理。",
+    },
+  ];
+}
+
+function getSpecialNodes(task: DetailTaskInfo): ProgressNode[] {
+  const s = task.isDraft ? 0 : task.step;
+  const hasReceipt = !!task.paymentReceipt;
+  const isRejected = task.node === "sp_rejected";
+  const isPaymentRejected = task.node === "sp_payment_rejected" || task.paymentStatus === "error";
+
+  return [
+    {
+      name: "客户提交特批申请",
+      status: task.isDraft ? "pending" : s >= 1 ? "completed" : "active",
+      handlerName: "李明",
+      handlerRole: "客户",
+      handlerInitial: "李",
+      time: task.isDraft ? "—" : task.time,
+      description: task.isDraft
+        ? "客户已保存特批充值申请草稿，尚未正式提交。"
+        : `客户提交特批充值申请，充值金额 ${task.amount}，客户应付金额 ${task.payableAmount}。`,
+    },
+    {
+      name: "米播评估",
+      status: isRejected ? "rejected" : s > 2 ? "completed" : s === 2 ? "active" : "pending",
+      handlerName: "赵航",
+      handlerRole: "米播平台",
+      handlerInitial: "赵",
+      time: s >= 2 ? "2026-07-10 09:00" : "—",
+      description: isRejected
+        ? "米播评估未通过，请查看原因。"
+        : s > 2
+          ? "米播已评估客户投放需求、账户状态、金额及特批风险。"
+          : s === 2
+            ? "米播正在评估账户、金额、付款安排及业务情况。"
+            : "等待米播评估特批申请。",
+      rejectionReasons: isRejected ? ["业务不符", "风险较高"] : undefined,
+      rejectionNote: isRejected ? "当前业务情况暂不支持特批充值。" : undefined,
+    },
+    {
+      name: "特批通过",
+      status: s > 3 ? "completed" : s === 3 ? "active" : "pending",
+      handlerName: "董老师",
+      handlerRole: "审批人",
+      handlerInitial: "董",
+      time: s >= 3 ? "2026-07-10 15:00" : "—",
+      description: s > 3
+        ? "特批申请已通过，米播可先行处理充值。"
+        : s === 3
+          ? "特批申请已通过，米播可先行处理充值。"
+          : "等待米播评估通过后，方可进行充值处理。",
+    },
+    {
+      name: "充值完成",
+      status: s > 4 ? "completed" : s === 4 ? "active" : "pending",
+      handlerName: "赵航",
+      handlerRole: "米播平台",
+      handlerInitial: "赵",
+      time: s >= 4 ? "2026-07-10 17:00" : "—",
+      description: s > 4
+        ? "米播已先行完成客户账户充值，等待客户完成付款并上传付款凭证。此时订单尚未完成。"
+        : s === 4
+          ? "米播正在处理客户账户充值。"
+          : "米播通过后将进行账户充值处理。",
+    },
+    {
+      name: "客户上传付款凭证",
+      status: isPaymentRejected
+        ? "rejected"
+        : task.financeConfirmed
+          ? "completed"
+          : hasReceipt
+            ? "active"
+            : s >= 4
+              ? "active"
+              : "pending",
+      handlerName: "李明",
+      handlerRole: "客户",
+      handlerInitial: "李",
+      time: s >= 5 && hasReceipt ? "2026-07-11 10:00" : "—",
+      description: isPaymentRejected
+        ? "付款凭证被驳回，请重新上传清晰完整的银行回单。"
+        : task.financeConfirmed
+          ? "财务已确认客户款项到账，订单状态更新为已完成。"
+          : hasReceipt
+            ? "客户已上传付款凭证，等待米播财务确认到账。"
+            : s >= 4
+              ? "客户需完成对公付款并上传付款凭证。"
+              : "等待充值完成后，客户需付款并上传凭证。",
+      rejectionReasons: isPaymentRejected ? ["付款凭证不清晰", "付款主体不一致"] : undefined,
+      rejectionNote: isPaymentRejected ? "请重新上传完整银行回单，并确认付款主体与客户主体一致。" : undefined,
+    },
+  ];
+}
+
+function getDraftNodes(task: DetailTaskInfo): ProgressNode[] {
+  const isSpecial = task.rechargeType === "special";
+  const nodes = isSpecial ? getSpecialNodes(task) : getRegularNodes(task);
+  // Override first node for draft
+  nodes[0] = {
+    name: "保存草稿",
+    status: "completed",
+    handlerName: "李明",
+    handlerRole: "客户",
+    handlerInitial: "李",
+    time: task.time,
+    description: isSpecial
+      ? "客户保存特批充值申请草稿，尚未正式提交。"
+      : "客户保存充值申请草稿，尚未正式提交。",
+  };
+  return nodes;
+}
 
 function SectionCard({
   title,
@@ -167,10 +328,17 @@ export function TaskDetailDrawer({
 }: TaskDetailDrawerProps) {
   if (!task) return null;
 
-  const isCompleted = task.node === "completed";
-  const isTransferring = task.node === "transferring";
+  const getNodes = (t: DetailTaskInfo): ProgressNode[] => {
+    if (t.isDraft) return getDraftNodes(t);
+    if (t.rechargeType === "special") return getSpecialNodes(t);
+    return getRegularNodes(t);
+  };
+
+  const nodes = getNodes(task);
+  const isCompleted = task.node === "completed" || (task.rechargeType === "special" && task.step >= task.totalSteps && task.financeConfirmed);
+  const isTransferring = task.node === "transferring" || task.node === "finance_confirm";
   const isError = task.node === "transfer_error";
-  const isPendingPayment = task.node === "pending_payment";
+  const isPendingPayment = task.node === "pending_payment" || task.node === "sp_payment_pending";
   const isPendingAudit = task.node === "pending_audit";
   const isAuditRejected = task.node === "audit_rejected";
 
@@ -242,41 +410,118 @@ export function TaskDetailDrawer({
             </div>
           </SectionCard>
 
-          {/* Section 3: Payment Info */}
-          {task.paymentAmount && (
-            <SectionCard
-              title="付款信息"
-              icon={<Wallet className="h-4 w-4 text-primary" />}
-            >
-              <InfoRow label="付款金额" value={task.paymentAmount} bold />
-              <InfoRow label="付款时间" value={task.paymentTime ?? "—"} />
-              <InfoRow label="付款账户名称" value={task.paymentAccountName ?? "—"} />
-              <InfoRow label="付款银行" value={task.paymentBank ?? "—"} />
-              <div className="flex items-center justify-between py-1.5">
-                <span className="text-xs text-muted-foreground">付款回单</span>
-                {task.paymentReceipt ? (
-                  <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary">
-                    <Eye className="mr-1 h-3 w-3" />
-                    {task.paymentReceipt}
-                  </Button>
-                ) : (
-                  <span className="text-xs text-muted-foreground">—</span>
-                )}
-              </div>
-              <InfoRow
-                label="财务确认状态"
-                value={task.financeConfirmed ? "已确认" : "待确认"}
-                bold
-              />
-              {task.financeConfirmedTime && (
-                <InfoRow label="财务确认时间" value={task.financeConfirmedTime} />
-              )}
-            </SectionCard>
-          )}
+          {/* Section 3: Payment Receipt Info */}
+          {(() => {
+            const isSpecial = task.rechargeType === "special";
+            const isDraft = task.isDraft;
+            const isPaymentError = task.paymentStatus === "error";
+            const hasReceipt = !!task.paymentReceipt;
+            const isFinanceConfirmed = task.financeConfirmed;
 
-          {/* Section 4: Platform Transfer Info */}
+            // ── Determine if payment info should be present ─────
+            // Regular: payment submitted with application → always present once submitted (step >= 2)
+            // Special: payment only required at step 5 (客户上传付款凭证)
+            const paymentRequired = isSpecial
+              ? (task.step >= 5 || hasReceipt) // special: step 5+ or receipt exists
+              : (!isDraft && task.step >= 2);  // regular: submitted means payment exists
+
+            const payStatusLabel = isDraft ? "待上传凭证"
+              : isPaymentError ? "凭证被驳回"
+              : isFinanceConfirmed ? "已确认到账"
+              : isSpecial && !hasReceipt && task.step < 5 ? "待上传凭证"
+              : isSpecial && hasReceipt && !isFinanceConfirmed ? "已上传待确认"
+              : !isSpecial && task.step >= 3 && isFinanceConfirmed ? "已确认到账"
+              : !isSpecial && task.step >= 2 ? "已上传待审核"
+              : hasReceipt ? "已上传待确认"
+              : "待上传凭证";
+
+            const payStatusClass = isPaymentError ? "border-red-200 bg-red-50 text-red-700"
+              : isFinanceConfirmed || (!isSpecial && task.step >= 3) ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : paymentRequired ? "border-blue-200 bg-blue-50 text-blue-700"
+              : "border-amber-200 bg-amber-50 text-amber-700";
+
+            const receiptLabel = paymentRequired && !hasReceipt && !isSpecial
+              ? "客户回单.pdf" // regular: payment submitted with app, implied receipt
+              : task.paymentReceipt || null;
+
+            const payAccount = paymentRequired && !task.paymentAccountName && !isSpecial
+              ? "上海云岚科技有限公司" // regular: implied from customer
+              : task.paymentAccountName || null;
+
+            const payAmount = paymentRequired && !task.paymentAmount
+              ? task.payableAmount // fallback to payable
+              : task.paymentAmount || null;
+
+            const uploadTime = paymentRequired && !task.paymentTime && !isSpecial
+              ? task.time // use submission time
+              : task.paymentTime || null;
+
+            const financeConfirmLabel = isDraft ? "未开始"
+              : isFinanceConfirmed ? "已确认到账"
+              : isSpecial && !hasReceipt ? "未开始"
+              : !isSpecial && task.step >= 2 && !isFinanceConfirmed ? "待米播审核"
+              : hasReceipt && !isFinanceConfirmed ? "待确认到账"
+              : "—";
+
+            return (
+              <SectionCard
+                title="付款凭证信息"
+                icon={<FileText className="h-4 w-4 text-primary" />}
+              >
+                {/* Payment status */}
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">付款状态</span>
+                  <Badge className={`gap-1 text-xs ${payStatusClass}`}>{payStatusLabel}</Badge>
+                  {isSpecial && !hasReceipt && task.step >= 4 && task.step < 5 && (
+                    <span className="text-[11px] text-muted-foreground">（特批充值，充值已完成，待客户付款）</span>
+                  )}
+                  {isSpecial && !hasReceipt && task.step >= 5 && (
+                    <span className="text-[11px] text-muted-foreground">（请完成付款并上传凭证）</span>
+                  )}
+                </div>
+
+                {/* Receipt file */}
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-xs text-muted-foreground">付款凭证</span>
+                  {receiptLabel ? (
+                    <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary">
+                      <Eye className="mr-1 h-3 w-3" />
+                      {receiptLabel}
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">未上传</span>
+                  )}
+                </div>
+
+                <InfoRow label="付款主体" value={payAccount || "—"} />
+                <InfoRow label={isSpecial && !hasReceipt ? "客户应付金额" : "客户填写付款金额"} value={payAmount || "—"} bold />
+
+                <InfoRow label="上传时间" value={uploadTime || "—"} />
+
+                <InfoRow label="财务确认状态" value={financeConfirmLabel} bold />
+                <InfoRow label="财务确认时间" value={task.financeConfirmedTime || "—"} />
+
+                {/* Rejection details */}
+                {isPaymentError && (
+                  <div className="mt-3 rounded-lg bg-red-50 p-3">
+                    <p className="text-xs font-medium text-red-700">驳回原因</p>
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {(task.errorReason || "付款凭证不清晰、付款主体不一致").split("、").map((r, i) => (
+                        <Badge key={i} className="border-red-200 bg-red-50 text-xs text-red-700">{r.trim()}</Badge>
+                      ))}
+                    </div>
+                    {task.errorDescription && (
+                      <p className="mt-2 text-xs text-red-600/80">{task.errorDescription}</p>
+                    )}
+                  </div>
+                )}
+              </SectionCard>
+            );
+          })()}
+
+          {/* Section 4: Account Recharge Info */}
           <SectionCard
-            title="平台转账信息"
+            title="米播进行账户充值"
             icon={<RefreshCw className="h-4 w-4 text-primary" />}
           >
             {task.transferStatus ? (
@@ -310,30 +555,87 @@ export function TaskDetailDrawer({
             )}
           </SectionCard>
 
-          {/* Section 5: Operation Log */}
+          {/* Section 5: Progress Overview */}
           <SectionCard
-            title="操作日志"
+            title="进度概览"
             icon={<FileText className="h-4 w-4 text-primary" />}
           >
+            <p className="mb-4 text-xs text-muted-foreground">查看该充值订单的完整处理进度</p>
             <div className="relative space-y-0">
-              {sampleLogs.map((log, index) => {
-                const isLast = index === sampleLogs.length - 1;
+              {nodes.map((node, index, arr) => {
+                const isLast = index === arr.length - 1;
+                const cfg = statusConfig[node.status];
+                const prevCompleted = index === 0 || arr[index - 1].status === "completed";
+                const lineColor = node.status === "completed" ? "bg-emerald-200" : prevCompleted ? "bg-border" : "bg-gray-200";
+
                 return (
                   <div key={index} className="relative flex gap-3 pb-4">
+                    {/* Vertical line */}
                     {!isLast && (
-                      <div className="absolute left-[7px] top-6 h-[calc(100%-12px)] w-px bg-border" />
+                      <div className={`absolute left-[7px] top-6 h-[calc(100%-8px)] w-px ${lineColor}`} />
                     )}
-                    <div className="relative z-10 mt-1 h-3.5 w-3.5 shrink-0 rounded-full border-2 border-primary bg-background" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-foreground">{log.action}</span>
-                        <span className="text-[10px] text-muted-foreground">{log.time}</span>
+                    {/* Status dot */}
+                    <div className={`relative z-10 mt-1 h-3.5 w-3.5 shrink-0 rounded-full border-2 ${cfg.dot}`} />
+
+                    {/* Content */}
+                    <div className={`min-w-0 flex-1 rounded-lg border px-3 py-2.5 ${
+                      node.status === "active" ? "border-blue-200 bg-blue-50/40" :
+                      node.status === "rejected" || node.status === "error" ? "border-red-200 bg-red-50/40" :
+                      node.status === "pending" ? "border-gray-100 bg-gray-50/30" :
+                      "border-transparent"
+                    }`}>
+                      {/* Node header */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`text-xs font-semibold ${
+                          node.status === "active" ? "text-blue-700" :
+                          node.status === "pending" ? "text-muted-foreground/60" :
+                          "text-foreground"
+                        }`}>{node.name}</span>
+                        <Badge className={`h-4 gap-0.5 px-1.5 text-[10px] ${cfg.badge}`}>
+                          {cfg.label}
+                        </Badge>
                       </div>
-                      <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <User className="h-3 w-3" />
-                        <span>{log.operator}</span>
+
+                      {/* Handler */}
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-medium ${
+                          node.status === "active" ? "bg-blue-100 text-blue-700" :
+                          node.status === "pending" ? "bg-gray-100 text-gray-400" :
+                          "bg-primary/10 text-primary"
+                        }`}>
+                          {node.handlerInitial}
+                        </div>
+                        <span className={`text-xs ${node.status === "pending" ? "text-muted-foreground/50" : "text-muted-foreground"}`}>
+                          {node.handlerName}
+                        </span>
+                        <span className={`text-[10px] ${node.status === "pending" ? "text-muted-foreground/40" : "text-muted-foreground/60"}`}>
+                          ｜{node.handlerRole}
+                        </span>
+                        <span className={`ml-auto text-[10px] ${node.status === "pending" ? "text-muted-foreground/40" : "text-muted-foreground"}`}>
+                          {node.time}
+                        </span>
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground">{log.notes}</p>
+
+                      {/* Description */}
+                      <p className={`mt-1.5 text-xs leading-relaxed ${
+                        node.status === "pending" ? "text-muted-foreground/50" : "text-muted-foreground"
+                      }`}>
+                        {node.description}
+                      </p>
+
+                      {/* Rejection details */}
+                      {node.rejectionReasons && (
+                        <div className="mt-2 space-y-1.5 rounded-md bg-red-100/60 px-2.5 py-2">
+                          <div className="flex flex-wrap gap-1">
+                            {node.rejectionReasons.map((r, i) => (
+                              <Badge key={i} className="h-4 border-red-200 bg-red-50 px-1 text-[10px] text-red-700">{r}</Badge>
+                            ))}
+                          </div>
+                          {node.rejectionNote && (
+                            <p className="text-[11px] text-red-600/80">{node.rejectionNote}</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

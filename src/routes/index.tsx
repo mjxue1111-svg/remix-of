@@ -37,6 +37,7 @@ import { RechargeModal } from "@/components/RechargeModal";
 import { AddAccountModal } from "@/components/AddAccountModal";
 import { TaskDetailDrawer, type DetailTaskInfo } from "@/components/TaskDetailDrawer";
 import { UploadPaymentModal, type PaymentTaskInfo, type UploadMode } from "@/components/UploadPaymentModal";
+import { SpecialPaymentModal, type SpecialPaymentTaskInfo } from "@/components/SpecialPaymentModal";
 import { CancelOrderModal, type CancelTaskInfo } from "@/components/CancelOrderModal";
 import { AccountLedgerDrawer, type LedgerAccountInfo } from "@/components/AccountLedgerDrawer";
 import { AccountDetailDrawer, type DetailAccountInfo } from "@/components/AccountDetailDrawer";
@@ -64,40 +65,43 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-// Customer-facing 5-step flow: 提交申请 → 审核通过 → 财务确认 → 平台转账 → 充值完成
-const regularStepLabels = ["提交申请", "审核通过", "财务确认", "平台转账", "充值完成"];
-const specialStepLabels = ["提交特批申请", "米播评估", "特批通过", "充值完成"];
+// Customer-facing 4-step flow: 客户提交申请 → 米播审核 → 米播进行账户充值 → 充值完成
+const regularStepLabels = ["客户提交申请", "米播审核", "米播进行账户充值", "充值完成"];
+const specialStepLabels = ["客户提交特批申请", "米播评估", "特批通过", "充值完成", "客户上传付款凭证"];
 
 const regularStepDescs = [
-  "客户已提交充值申请",
-  "米播已完成账户与金额审核",
-  "米播财务确认付款到账",
-  "米播进行平台充值/账户划拨",
-  "充值已完成，可查看账户余额",
+  "客户已填写充值信息并提交充值申请",
+  "米播正在审核充值信息、账户信息及金额信息",
+  "米播审核通过，进行内部财务确认、付款及账户充值处理",
+  "米播已完成账户充值，客户账户余额已更新",
 ];
 const specialStepDescs = [
-  "客户已提交特批充值申请",
+  "客户已提交特批充值申请，说明特批原因及承诺付款安排",
   "米播正在评估特批申请",
-  "特批申请已通过",
-  "米播已完成特批充值处理",
+  "特批申请已通过，米播可先行处理充值",
+  "米播已完成客户账户充值",
+  "客户上传付款凭证，待财务确认到账",
 ];
 
 const nodeStatusMap: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
   // Draft
   draft: { label: "草稿", className: "border-gray-200 bg-gray-50 text-gray-500", icon: <FileText className="h-3 w-3" /> },
-  // Regular recharge nodes
-  pending_audit: { label: "待审核", className: "border-blue-200 bg-blue-50 text-blue-700", icon: <Clock className="h-3 w-3" /> },
-  audit_approved: { label: "审核通过", className: "border-blue-200 bg-blue-50 text-blue-700", icon: <CheckCircle2 className="h-3 w-3" /> },
-  audit_rejected: { label: "审核驳回", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
-  finance_confirm: { label: "财务确认", className: "border-sky-200 bg-sky-50 text-sky-700", icon: <Upload className="h-3 w-3" /> },
-  transferring: { label: "平台转账", className: "border-primary/30 bg-primary/10 text-primary", icon: <RefreshCw className="h-3 w-3" /> },
+  // Regular recharge nodes (customer-facing)
+  pending_audit: { label: "米播审核", className: "border-blue-200 bg-blue-50 text-blue-700", icon: <Clock className="h-3 w-3" /> },
+  audit_approved: { label: "米播审核中", className: "border-blue-200 bg-blue-50 text-blue-700", icon: <CheckCircle2 className="h-3 w-3" /> },
+  audit_rejected: { label: "审核未通过", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
+  finance_confirm: { label: "米播进行账户充值", className: "border-sky-200 bg-sky-50 text-sky-700", icon: <RefreshCw className="h-3 w-3" /> },
+  transferring: { label: "米播进行账户充值", className: "border-primary/30 bg-primary/10 text-primary", icon: <RefreshCw className="h-3 w-3" /> },
   completed: { label: "充值完成", className: "border-emerald-200 bg-emerald-50 text-emerald-700", icon: <CheckCircle2 className="h-3 w-3" /> },
-  transfer_error: { label: "转账异常", className: "border-red-200 bg-red-50 text-red-700", icon: <ShieldAlert className="h-3 w-3" /> },
+  transfer_error: { label: "处理异常", className: "border-red-200 bg-red-50 text-red-700", icon: <ShieldAlert className="h-3 w-3" /> },
   // Special recharge nodes
-  sp_submitted: { label: "提交特批申请", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Clock className="h-3 w-3" /> },
+  sp_submitted: { label: "客户提交特批申请", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Clock className="h-3 w-3" /> },
   sp_evaluating: { label: "米播评估", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Zap className="h-3 w-3" /> },
   sp_approved: { label: "特批通过", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <CheckCircle2 className="h-3 w-3" /> },
-  sp_completed: { label: "充值完成", className: "border-emerald-200 bg-emerald-50 text-emerald-700", icon: <CheckCircle2 className="h-3 w-3" /> },
+  sp_completed: { label: "充值完成", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <CheckCircle2 className="h-3 w-3" /> },
+  sp_payment_pending: { label: "待上传付款凭证", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Upload className="h-3 w-3" /> },
+  sp_payment_uploaded: { label: "待财务确认到账", className: "border-blue-200 bg-blue-50 text-blue-700", icon: <Clock className="h-3 w-3" /> },
+  sp_payment_rejected: { label: "付款凭证驳回", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
   sp_rejected: { label: "特批未通过", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
 };
 
@@ -146,44 +150,50 @@ type PaymentInfo = {
   isError?: boolean;
 };
 
-// In audit = step >= finance_confirm (step 3 for regular, step 2 for special)
+// In audit = step >= 2 for regular (米播审核), step >= 2 for special
 function isInAudit(task: Task): boolean {
-  if (task.rechargeType === "special") return task.step >= 2;
-  return task.step >= 3;
+  return task.step >= 2;
 }
 
 function getPaymentInfo(task: Task): PaymentInfo {
   const hasReceipt = !!task.paymentReceipt;
   const isConfirmed = task.financeConfirmed;
-  const inAudit = isInAudit(task);
 
-  // Payment receipt error
+  // Special: 5-step flow
+  if (task.rechargeType === "special") {
+    if (task.paymentStatus === "error")
+      return { statusLabel: "凭证异常", statusClass: "border-red-200 bg-red-50 text-red-700", actionLabel: "重新上传", actionMode: "reupload_error", isError: true };
+    if (isConfirmed)
+      return { statusLabel: "已确认到账", statusClass: "border-emerald-200 bg-emerald-50 text-emerald-700", receiptFile: task.paymentReceipt };
+    if (hasReceipt)
+      return { statusLabel: "待财务确认到账", statusClass: "border-blue-200 bg-blue-50 text-blue-700", receiptFile: task.paymentReceipt };
+    if (task.step >= 4)
+      return { statusLabel: "待上传付款凭证", statusClass: "border-amber-200 bg-amber-50 text-amber-700", actionLabel: "上传凭证", actionMode: "supplement" };
+    return { statusLabel: "—", statusClass: "border-gray-200 bg-gray-50 text-gray-500" };
+  }
+
+  // Regular recharge — payment info is internal, not shown as PaymentInfo column
   if (task.paymentStatus === "error")
     return { statusLabel: "凭证异常", statusClass: "border-red-200 bg-red-50 text-red-700", actionLabel: "重新上传", actionMode: "reupload_error", isError: true };
   if (isConfirmed)
-    return { statusLabel: "已确认到账", statusClass: "border-emerald-200 bg-emerald-50 text-emerald-700", receiptFile: task.paymentReceipt, actionLabel: "申请重新上传", actionMode: "reupload_post" };
-  if (hasReceipt && inAudit)
-    return { statusLabel: "已进入审核", statusClass: "border-blue-200 bg-blue-50 text-blue-700", receiptFile: task.paymentReceipt, actionLabel: "申请重新上传", actionMode: "reupload_post" };
+    return { statusLabel: "已确认到账", statusClass: "border-emerald-200 bg-emerald-50 text-emerald-700", receiptFile: task.paymentReceipt };
   if (hasReceipt)
-    return { statusLabel: "已上传待确认", statusClass: "border-blue-200 bg-blue-50 text-blue-700", receiptFile: task.paymentReceipt, actionLabel: "重新上传", actionMode: "reupload_pre" };
-  if (task.rechargeType === "special" && task.step >= task.totalSteps)
-    return { statusLabel: "待上传凭证", statusClass: "border-amber-200 bg-amber-50 text-amber-700", actionLabel: "补传凭证", actionMode: "supplement" };
-  return { statusLabel: "待上传凭证", statusClass: "border-amber-200 bg-amber-50 text-amber-700", actionLabel: "上传凭证", actionMode: "upload" };
+    return { statusLabel: "已上传凭证", statusClass: "border-blue-200 bg-blue-50 text-blue-700", receiptFile: task.paymentReceipt };
+  return { statusLabel: "—", statusClass: "border-gray-200 bg-gray-50 text-gray-500" };
 }
 
 function getOrderCompleted(task: Task): boolean {
   const atFinalStep = task.step >= task.totalSteps;
-  if (task.rechargeType === "special") return atFinalStep && !!task.paymentReceipt;
+  if (task.rechargeType === "special") return atFinalStep && !!task.financeConfirmed;
   return atFinalStep;
 }
 
 function canCancelOrder(task: Task): boolean {
-  // Allowed: draft, pending upload, submitted but not in audit, audit rejected, error not yet resubmitted
   if (task.isDraft) return true;
-  if (task.financeConfirmed) return false; // already confirmed
-  if (task.step >= 4 && task.rechargeType === "regular") return false; // platform transfer or completed
-  if (task.step >= 3 && task.rechargeType === "special") return false; // approved or completed
-  if (isInAudit(task)) return false; // in audit
+  if (task.financeConfirmed) return false;
+  if (task.step >= 3 && task.rechargeType === "regular") return false; // account recharge or completed
+  if (task.step >= 3 && task.rechargeType === "special") return false; // approved or beyond
+  if (isInAudit(task) && task.rechargeType === "regular" && task.step >= 3) return false;
   return true;
 }
 
@@ -196,35 +206,35 @@ function getStepTooltip(task: Task, index: number, isSpecial: boolean): string {
     const tips = [
       "客户已提交特批充值申请",
       task.step >= 2 && task.node === "sp_rejected" ? "特批申请未通过，请查看详情" : "米播正在评估账户、金额、付款安排及业务情况",
-      "特批申请已通过，米播将继续推进充值处理",
-      stepNum === 4 && task.step >= 4 && !hasPaid
-        ? "充值已完成，客户仍需按承诺时间付款并上传凭证"
-        : stepNum === 4 && task.step >= 4 && hasPaid && !task.financeConfirmed
-          ? "充值已完成，客户已上传付款凭证，等待米播确认"
-          : stepNum === 4 && task.step >= 4 && task.financeConfirmed
-            ? "充值已完成，付款凭证已确认到账"
-            : "米播已完成特批充值处理",
+      "特批申请已通过，米播可先行处理充值",
+      "米播已完成客户账户充值",
+      stepNum === 5 && task.step >= 5 && task.financeConfirmed
+        ? "客户已上传付款凭证，财务已确认到账"
+        : stepNum === 5 && task.step >= 4 && hasReceipt && !task.financeConfirmed
+          ? "客户已上传付款凭证，等待财务确认到账"
+          : stepNum === 5 && task.paymentStatus === "error"
+            ? "付款凭证需重新提交"
+            : stepNum === 5 && task.step >= 4 && !hasReceipt
+              ? "客户需按承诺时间付款并上传凭证"
+              : "客户上传付款凭证，待财务确认",
     ];
     return tips[index] || "";
   }
 
-  // Regular recharge tips
+  // Regular recharge tips (4 steps)
   const tips = [
     hasReceipt
-      ? "客户已提交申请并上传付款凭证，等待米播审核"
-      : "客户已提交申请，但付款凭证尚未上传",
+      ? "客户已提交充值申请并上传付款凭证"
+      : "客户已提交充值申请",
     task.step >= 2
-      ? "米播已完成账户、金额及申请信息审核"
-      : "等待米播完成审核",
-    task.paymentStatus === "error"
-      ? "付款凭证存在异常，请查看详情并按要求重新上传"
-      : hasReceipt
-        ? "米播财务正在确认付款到账情况"
-        : "等待客户上传付款凭证",
-    "米播正在进行平台充值/账户划拨",
-    stepNum === 5 && task.step >= 5
+      ? "米播已完成审核"
+      : "米播正在审核充值信息、账户及金额",
+    task.step >= 3
+      ? "米播已完成内部财务确认、付款及账户充值处理"
+      : "米播审核通过后进行内部财务确认、付款及账户充值",
+    stepNum === 4 && task.step >= 4
       ? "充值已完成，可查看账户余额和流水"
-      : "充值完成后可查看账户余额",
+      : "米播完成充值后，账户余额将自动更新",
   ];
   return tips[index] || "";
 }
@@ -236,70 +246,25 @@ const tasks: Task[] = [
     amount: "¥100,000.00", payableAmount: "¥98,000.00", discount: "98 折",
     node: "draft", rechargeType: "regular", isDraft: true,
     handler: "—", statusDescription: "草稿，尚未正式提交",
-    step: 0, totalSteps: 5, time: "2026-07-10 15:20", purpose: "达人采买", orderCompleted: false,
+    step: 0, totalSteps: 4, time: "2026-07-10 15:20", purpose: "达人采买", orderCompleted: false,
   },
-  // Row 1: Regular, paid, transferring
+  // Row 1: Regular, submitted, pending audit
   {
-    id: "RC-2026-07001", account: "云岚品牌中心", accountType: "主账户", accountId: "ST-10086101", subject: "上海云岚科技有限公司",
-    amount: "¥50,000.00", payableAmount: "¥49,000.00", discount: "98 折",
-    node: "transferring", rechargeType: "regular",
-    handler: "米播平台媒介", statusDescription: "财务已确认到账，正在进行平台转账处理",
-    step: 4, totalSteps: 5, time: "2026-07-10 14:32", purpose: "达人采买", orderCompleted: false,
-    paymentAmount: "¥49,000.00", paymentTime: "2026-07-10 15:05", paymentAccountName: "上海云岚科技有限公司",
-    paymentBank: "招商银行上海分行", paymentReceipt: "回单_20260710.pdf",
-    financeConfirmed: true, financeConfirmedTime: "2026-07-10 15:20", transferStatus: "处理中",
-    bankName: "招商银行上海分行", bankAccount: "6222 **** **** 8888",
-  },
-  // Row 2: Regular, submitted, no receipt
-  {
-    id: "RC-2026-07002", account: "云岚效果投放", accountType: "投放账户", accountId: "ST-10086102", subject: "上海云岚科技有限公司",
+    id: "RC-2026-07001", account: "云岚效果投放", accountType: "投放账户", accountId: "ST-10086102", subject: "上海云岚科技有限公司",
     amount: "¥120,000.00", payableAmount: "¥117,600.00", discount: "98 折",
     node: "pending_audit", rechargeType: "regular",
-    handler: "米播平台媒介", statusDescription: "客户已提交充值申请，等待上传付款凭证",
-    step: 1, totalSteps: 5, time: "2026-07-10 11:15", purpose: "广告投放", orderCompleted: false,
+    handler: "米播平台媒介", statusDescription: "客户已提交充值申请，等待米播审核",
+    step: 2, totalSteps: 4, time: "2026-07-10 11:15", purpose: "广告投放",
+    paymentReceipt: "客户回单_20260710.pdf", paymentAmount: "¥117,600.00", paymentTime: "2026-07-10 11:15", paymentAccountName: "上海云岚科技有限公司",
+    financeConfirmed: false, orderCompleted: false,
   },
-  // Row 3: Regular, completed
-  {
-    id: "RC-2026-07003", account: "云岚内容增长", accountType: "运营账户", accountId: "ST-10086103", subject: "上海云岚科技有限公司",
-    amount: "¥30,000.00", payableAmount: "¥29,400.00", discount: "98 折",
-    node: "completed", rechargeType: "regular",
-    handler: "—", statusDescription: "充值已完成，资金已到云岚内容增长",
-    step: 5, totalSteps: 5, time: "2026-07-09 16:48", purpose: "助推投流", orderCompleted: true,
-    paymentAmount: "¥29,400.00", paymentTime: "2026-07-09 17:00", paymentAccountName: "上海云岚科技有限公司",
-    paymentBank: "招商银行上海分行", paymentReceipt: "回单_20260709.pdf",
-    financeConfirmed: true, financeConfirmedTime: "2026-07-09 17:05", transferStatus: "已完成",
-    transferId: "XT20260709001", transferCompletedTime: "2026-07-09 17:10",
-    bankName: "招商银行上海分行", bankAccount: "6222 **** **** 8888",
-  },
-  // Row 4: Special, uploaded pending, approved
-  {
-    id: "RC-2026-07004", account: "云岚新品推广", accountType: "投放账户", accountId: "ST-10086104", subject: "上海云岚科技有限公司",
-    amount: "¥80,000.00", payableAmount: "¥78,400.00", discount: "98 折",
-    node: "sp_approved", rechargeType: "special",
-    handler: "米播", statusDescription: "特批已通过，客户已上传付款凭证，等待财务确认",
-    step: 3, totalSteps: 4, time: "2026-07-10 10:20", purpose: "达人采买", orderCompleted: false,
-    paymentAmount: "¥78,400.00", paymentTime: "2026-07-10 11:00", paymentAccountName: "上海云岚科技有限公司",
-    paymentBank: "招商银行上海分行", paymentReceipt: "特批付款回单_20260710.pdf",
-    financeConfirmed: false, bankName: "招商银行上海分行", bankAccount: "6222 **** **** 8888",
-  },
-  // Row 5: Special, completed, no receipt → order not complete
+  // Row 2: Special, completed, no receipt → order not complete
   {
     id: "RC-2026-07005", account: "云岚达人合作", accountType: "品牌账户", accountId: "ST-10086105", subject: "上海云岚科技有限公司",
     amount: "¥40,000.00", payableAmount: "¥39,200.00", discount: "98 折",
     node: "sp_completed", rechargeType: "special",
     handler: "—", statusDescription: "特批充值已完成，等待客户按承诺时间付款并上传凭证",
-    step: 4, totalSteps: 4, time: "2026-07-08 18:30", purpose: "广告投放", orderCompleted: false,
-  },
-  // Row 6: Special, completed with receipt → order complete
-  {
-    id: "RC-2026-07006", account: "云岚达人合作", accountType: "品牌账户", accountId: "ST-10086106", subject: "上海云岚科技有限公司",
-    amount: "¥60,000.00", payableAmount: "¥58,800.00", discount: "98 折",
-    node: "sp_completed", rechargeType: "special",
-    handler: "—", statusDescription: "特批充值已完成，客户已上传付款凭证",
-    step: 4, totalSteps: 4, time: "2026-07-11 09:30", purpose: "广告投放", orderCompleted: true,
-    paymentAmount: "¥58,800.00", paymentTime: "2026-07-11 10:00", paymentAccountName: "上海云岚科技有限公司",
-    paymentBank: "招商银行上海分行", paymentReceipt: "特批回单_20260711.pdf",
-    financeConfirmed: false, bankName: "招商银行上海分行", bankAccount: "6222 **** **** 8888",
+    step: 4, totalSteps: 5, time: "2026-07-08 18:30", purpose: "广告投放", orderCompleted: false,
   },
 ];
 
@@ -420,7 +385,7 @@ const taskBreakdown = [
   { label: "平台处理中", count: "1 笔", color: "text-blue-600" },
 ];
 
-function WelcomeSection({ onRecharge }: { onRecharge: () => void }) {
+function WelcomeSection({ onRecharge, onAddAccount }: { onRecharge: () => void; onAddAccount: () => void }) {
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-sapphire p-6 text-primary-foreground shadow-lg sm:p-8">
       <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -436,12 +401,18 @@ function WelcomeSection({ onRecharge }: { onRecharge: () => void }) {
             这是您的企业充值工作台，可快速查看账户余额、充值进度与账户概览。
           </p>
         </div>
-        <div className="flex shrink-0 flex-col gap-3 sm:items-end">
+        <div className="flex shrink-0 flex-col gap-2.5 sm:items-end">
           <Badge className="w-fit border-white/20 bg-white/15 text-white hover:bg-white/20">
             账户状态正常
           </Badge>
           <Button
-            size="lg"
+            onClick={onAddAccount}
+            className="bg-white text-primary shadow-md hover:bg-white/90"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            新增账户
+          </Button>
+          <Button
             onClick={onRecharge}
             className="bg-white text-primary shadow-md hover:bg-white/90"
           >
@@ -669,12 +640,14 @@ function RechargeTasks({
   onRecharge,
   onCancelOrder,
   onContinueSubmit,
+  onSpecialPayment,
 }: {
   onViewDetail: (task: Task) => void;
   onUploadPayment: (task: Task, mode: UploadMode) => void;
   onRecharge: () => void;
   onCancelOrder: (task: Task) => void;
   onContinueSubmit: (task: Task) => void;
+  onSpecialPayment: (task: Task) => void;
 }) {
   return (
     <Card className="border-border/60 shadow-sm">
@@ -723,11 +696,11 @@ function RechargeTasks({
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="whitespace-nowrap font-semibold min-w-[150px]">充值单信息</TableHead>
+                <TableHead className="whitespace-nowrap font-semibold min-w-[130px]">充值单号</TableHead>
+                <TableHead className="whitespace-nowrap font-semibold min-w-[100px]">充值处理方式</TableHead>
                 <TableHead className="whitespace-nowrap font-semibold min-w-[170px]">账户信息</TableHead>
                 <TableHead className="whitespace-nowrap font-semibold min-w-[160px]">金额信息</TableHead>
                 <TableHead className="whitespace-nowrap font-semibold min-w-[190px]">当前节点</TableHead>
-                <TableHead className="whitespace-nowrap font-semibold min-w-[200px]">付款信息</TableHead>
                 <TableHead className="whitespace-nowrap font-semibold">充值用途</TableHead>
                 <TableHead className="whitespace-nowrap font-semibold">订单状态</TableHead>
                 <TableHead className="whitespace-nowrap font-semibold">提交时间</TableHead>
@@ -738,25 +711,33 @@ function RechargeTasks({
               {tasks.map((task) => {
                 const node = nodeStatusMap[task.node];
                 const isSpecial = task.rechargeType === "special";
-                const isCompleted = task.step >= task.totalSteps && (task.node === "completed" || task.node === "sp_completed");
-                const isError = task.node === "transfer_error" || task.node === "audit_rejected" || task.node === "sp_rejected";
+                const isCompleted = getOrderCompleted(task);
+                const isError = task.node === "transfer_error" || task.node === "audit_rejected" || task.node === "sp_rejected" || task.node === "sp_payment_rejected";
                 const stepLabels = isSpecial ? specialStepLabels : regularStepLabels;
                 const payInfo = getPaymentInfo(task);
 
                 return (
                   <TableRow key={task.id}>
-                    {/* 充值单信息 */}
+                    {/* 充值单号 */}
                     <TableCell className="whitespace-nowrap py-3">
-                      <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 space-y-1.5">
-                        <span className="font-mono text-sm font-semibold text-foreground">{task.id}</span>
-                        <div>
-                          {isSpecial ? (
-                            <Badge className="gap-1 border-amber-200 bg-amber-50 text-xs text-amber-700"><Zap className="h-3 w-3" />特批充值</Badge>
-                          ) : (
-                            <Badge className="gap-1 border-blue-200 bg-blue-50 text-xs text-blue-700"><Wallet className="h-3 w-3" />常规充值</Badge>
-                          )}
-                        </div>
-                      </div>
+                      {task.isDraft ? (
+                        <span className="text-sm text-muted-foreground">——</span>
+                      ) : (
+                        <button
+                          className="font-mono text-sm font-semibold text-primary hover:underline"
+                          onClick={() => onViewDetail(task)}
+                        >
+                          {task.id}
+                        </button>
+                      )}
+                    </TableCell>
+                    {/* 充值处理方式 */}
+                    <TableCell className="whitespace-nowrap py-3">
+                      {isSpecial ? (
+                        <Badge className="gap-1 border-amber-200 bg-amber-50 text-xs text-amber-700"><Zap className="h-3 w-3" />特批充值</Badge>
+                      ) : (
+                        <Badge className="gap-1 border-blue-200 bg-blue-50 text-xs text-blue-700"><Wallet className="h-3 w-3" />常规充值</Badge>
+                      )}
                     </TableCell>
 
                     {/* 账户信息 */}
@@ -816,41 +797,8 @@ function RechargeTasks({
                           })}
                         </div>
                         <p className={`text-[11px] font-medium ${isError ? "text-destructive" : isCompleted ? "text-emerald-600" : task.isDraft ? "text-muted-foreground" : "text-muted-foreground"}`}>
-                          {task.isDraft ? "草稿｜尚未提交" : `第 ${task.step}/${task.totalSteps} 步${isError ? `｜${node.label}` : isCompleted ? `｜充值完成` : `｜${node.label}中`}`}
+                          {task.isDraft ? "草稿｜尚未提交" : `第 ${task.step}/${task.totalSteps} 步${isError ? `｜${node.label}` : isCompleted ? (isSpecial ? `｜客户上传付款凭证完成` : `｜充值完成`) : `｜${node.label}${task.step >= 4 && isSpecial && !task.paymentReceipt ? "，待客户上传付款凭证" : task.step >= 2 && !isSpecial ? "中" : ""}`}`}
                         </p>
-                      </div>
-                    </TableCell>
-
-                    {/* 付款信息 */}
-                    <TableCell className="py-3">
-                      <div className="rounded-lg border border-border/60 bg-white px-3 py-2.5 space-y-1.5 min-w-[140px]">
-                        {/* Row 1: Status badge */}
-                        <div className="flex items-center">
-                          <Badge variant="outline" className={`gap-1 text-xs ${payInfo.statusClass}`}>{payInfo.statusLabel}</Badge>
-                        </div>
-                        {/* Row 2: File link (if exists) */}
-                        {payInfo.receiptFile && (
-                          <button className="flex items-center gap-1.5 text-xs text-primary hover:underline">
-                            <FileText className="h-3.5 w-3.5" />{payInfo.receiptFile}
-                          </button>
-                        )}
-                        {/* Row 3: Primary action (only for upload/supplement/error) */}
-                        {payInfo.actionLabel && payInfo.actionMode && (payInfo.isError || payInfo.actionMode === "upload" || payInfo.actionMode === "supplement") && (
-                          <Button variant="outline" size="sm"
-                            className={`h-7 gap-1 text-xs w-full ${payInfo.isError ? "border-red-200 text-red-600 hover:bg-red-50" : "border-amber-200 text-amber-700 hover:bg-amber-50"}`}
-                            onClick={() => onUploadPayment(task, payInfo.actionMode!)}>
-                            <Upload className="h-3 w-3" />{payInfo.actionLabel}
-                          </Button>
-                        )}
-                        {/* Row 3 alt: Weak re-upload link for non-error states with receipt */}
-                        {payInfo.receiptFile && payInfo.actionMode && (payInfo.actionMode === "reupload_pre" || payInfo.actionMode === "reupload_post") && (
-                          <button
-                            className="text-[10px] text-muted-foreground hover:text-primary hover:underline transition-colors"
-                            onClick={() => onUploadPayment(task, payInfo.actionMode!)}
-                          >
-                            上传内容有误？{payInfo.actionMode === "reupload_post" ? "申请重新上传" : "重新上传"}
-                          </button>
-                        )}
                       </div>
                     </TableCell>
 
@@ -877,21 +825,42 @@ function RechargeTasks({
                     <TableCell className="py-2">
                       <div className="flex flex-col gap-1">
                         {/* Row 1: 继续提交 */}
-                        {(task.isDraft || payInfo.actionMode === "upload" || payInfo.actionMode === "supplement" || payInfo.actionMode === "reupload_error") ? (
+                        {task.isDraft ? (
                           <Button size="sm" variant="outline" className="h-7 gap-1 text-xs border-primary/30 bg-sapphire-subtle text-primary hover:bg-sapphire-muted w-full justify-center" onClick={() => onContinueSubmit(task)}>
                             <Upload className="h-3 w-3" />继续提交
                           </Button>
                         ) : (
                           <div className="group relative">
                             <Button size="sm" variant="ghost" disabled className="h-7 gap-1 text-xs w-full justify-center">继续提交</Button>
-                            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">当前订单已进入处理流程，暂不可继续提交</span>
+                            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">该充值申请已提交，暂不可继续编辑</span>
                           </div>
                         )}
-                        {/* Row 2: 查看详情 */}
+                        {/* Row 2: 提交付款凭证 — only for 特批充值 */}
+                        {isSpecial && (
+                          !task.isDraft && !task.financeConfirmed && (payInfo.actionMode === "upload" || payInfo.actionMode === "supplement" || payInfo.actionMode === "reupload_error") ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className={`h-7 gap-1 text-xs w-full justify-center ${payInfo.actionMode === "reupload_error" ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100" : "border-primary/30 bg-sapphire-subtle text-primary hover:bg-sapphire-muted"}`}
+                              onClick={() => onSpecialPayment(task)}
+                            >
+                              <Upload className="h-3 w-3" />
+                              {payInfo.actionMode === "reupload_error" ? "重新提交付款凭证" : "提交付款凭证"}
+                            </Button>
+                          ) : (
+                            <div className="group relative">
+                              <Button size="sm" variant="ghost" disabled className="h-7 gap-1 text-xs w-full justify-center">
+                                {payInfo.actionMode === "reupload_error" ? "重新提交付款凭证" : "提交付款凭证"}
+                              </Button>
+                              <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">当前状态暂不支持提交付款凭证</span>
+                            </div>
+                          )
+                        )}
+                        {/* Row 3: 查看详情 */}
                         <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground w-full justify-center" onClick={() => onViewDetail(task)}>
                           <Eye className="h-3 w-3" />查看详情
                         </Button>
-                        {/* Row 3: … more */}
+                        {/* Row 4: … more */}
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground w-full justify-center tracking-widest">…</Button>
@@ -985,13 +954,11 @@ function AccountOverview({ onRecharge, onAddAccount, onViewLedger, onViewDetail 
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="whitespace-nowrap font-semibold min-w-[200px]">账户信息</TableHead>
-                <TableHead className="whitespace-nowrap text-right font-semibold">当前余额</TableHead>
-                <TableHead className="whitespace-nowrap text-right font-semibold">本月充值</TableHead>
-                <TableHead className="whitespace-nowrap text-right font-semibold">本月消耗</TableHead>
-                <TableHead className="whitespace-nowrap font-semibold">账户状态</TableHead>
-                <TableHead className="whitespace-nowrap font-semibold">余额更新时间</TableHead>
-                <TableHead className="whitespace-nowrap font-semibold">操作</TableHead>
+                <TableHead className="whitespace-nowrap font-semibold w-[240px]">账户信息</TableHead>
+                <TableHead className="whitespace-nowrap font-semibold w-[240px]">资金情况</TableHead>
+                <TableHead className="whitespace-nowrap font-semibold w-[96px]">账户状态</TableHead>
+                <TableHead className="whitespace-nowrap font-semibold w-[140px]">余额更新时间</TableHead>
+                <TableHead className="whitespace-nowrap font-semibold w-[120px]">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1001,10 +968,10 @@ function AccountOverview({ onRecharge, onAddAccount, onViewLedger, onViewDetail 
                 const isPending = account.status === "审核中";
                 const canRecharge = !isAbnormal && !isPending;
                 return (
-                  <TableRow key={account.accountId}>
-                    {/* 账户信息 — 三行合并 */}
-                    <TableCell className="py-3">
-                      <div className="space-y-1">
+                  <TableRow key={account.accountId} className="align-middle">
+                    {/* 账户信息 */}
+                    <TableCell className="py-2.5">
+                      <div className="space-y-0.5">
                         <div className="flex items-center gap-1.5">
                           <Badge className="h-4 gap-0.5 border-blue-200 bg-blue-50 px-1 text-[10px] text-blue-700">星图</Badge>
                           <span className="text-sm font-semibold text-foreground">{account.name}</span>
@@ -1016,12 +983,23 @@ function AccountOverview({ onRecharge, onAddAccount, onViewLedger, onViewDetail 
                         <p className="text-[11px] text-muted-foreground">主体：{account.subject}</p>
                       </div>
                     </TableCell>
-                    {/* 当前余额 */}
-                    <TableCell className="whitespace-nowrap text-right font-semibold text-foreground">{account.balance}</TableCell>
-                    {/* 本月充值 */}
-                    <TableCell className="whitespace-nowrap text-right text-sm text-emerald-600">{account.monthlyRecharge}</TableCell>
-                    {/* 本月消耗 */}
-                    <TableCell className="whitespace-nowrap text-right text-sm text-amber-600">{account.monthlySpend}</TableCell>
+                    {/* 资金情况 — 三行紧凑 */}
+                    <TableCell className="py-2.5">
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-muted-foreground">当前余额</span>
+                          <span className="text-sm font-bold text-foreground">{account.balance}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-muted-foreground">本月充值</span>
+                          <span className="text-sm font-medium text-emerald-600">{account.monthlyRecharge}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-muted-foreground">本月消耗</span>
+                          <span className="text-sm font-medium text-amber-600">{account.monthlySpend}</span>
+                        </div>
+                      </div>
+                    </TableCell>
                     {/* 账户状态 */}
                     <TableCell className="whitespace-nowrap">
                       <Badge variant={statusCfg.variant} className={`gap-1 text-xs ${statusCfg.className}`}>
@@ -1034,15 +1012,15 @@ function AccountOverview({ onRecharge, onAddAccount, onViewLedger, onViewDetail 
                     </TableCell>
                     {/* 余额更新时间 */}
                     <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{account.updatedAt}</TableCell>
-                    {/* 操作 — 竖向排列 */}
-                    <TableCell className="py-2">
+                    {/* 操作 */}
+                    <TableCell className="py-1.5">
                       <div className="flex flex-col gap-1">
                         {canRecharge ? (
                           <Button variant="outline" size="sm" onClick={onRecharge} className="h-7 border-primary/30 bg-sapphire-subtle text-xs text-primary hover:bg-sapphire-muted w-full justify-center">
                             <Wallet className="mr-1 h-3 w-3" />发起充值
                           </Button>
                         ) : (
-                          <div className="group relative">
+                          <div className="group relative w-full">
                             <Button variant="ghost" size="sm" disabled className="h-7 text-xs text-muted-foreground w-full justify-center">发起充值</Button>
                             <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">
                               {isPending ? "账户审核通过后可发起充值" : "当前账户暂不可充值，请查看详情"}
@@ -1077,6 +1055,8 @@ function Index() {
   const [uploadPaymentOpen, setUploadPaymentOpen] = useState(false);
   const [uploadTask, setUploadTask] = useState<Task | null>(null);
   const [uploadMode, setUploadMode] = useState<UploadMode>("upload");
+  const [specialPaymentOpen, setSpecialPaymentOpen] = useState(false);
+  const [specialPaymentTask, setSpecialPaymentTask] = useState<SpecialPaymentTaskInfo | null>(null);
   const [cancelOrderOpen, setCancelOrderOpen] = useState(false);
   const [cancelTask, setCancelTask] = useState<Task | null>(null);
   const [ledgerOpen, setLedgerOpen] = useState(false);
@@ -1096,6 +1076,26 @@ function Index() {
     setUploadTask(task);
     setUploadMode(mode);
     setUploadPaymentOpen(true);
+  }, []);
+
+  const handleSpecialPayment = useCallback((task: Task) => {
+    setSpecialPaymentTask({
+      id: task.id,
+      account: task.account,
+      accountId: task.accountId ?? "",
+      subject: task.subject ?? "",
+      amount: task.amount,
+      payableAmount: task.payableAmount,
+      discount: task.discount ?? "98 折",
+      rechargeType: "special" as const,
+      node: task.node,
+      step: task.step,
+      totalSteps: task.totalSteps,
+      customerName: "上海云岚科技有限公司",
+      paymentReceipt: task.paymentReceipt,
+      paymentStatus: task.paymentStatus,
+    });
+    setSpecialPaymentOpen(true);
   }, []);
 
   const buildPaymentTaskInfo = (t: Task | null): PaymentTaskInfo | null => {
@@ -1157,6 +1157,11 @@ function Index() {
       handler: t.handler,
       statusDescription: t.statusDescription,
       time: t.time,
+      rechargeType: t.rechargeType,
+      step: t.step,
+      totalSteps: t.totalSteps,
+      isDraft: t.isDraft,
+      paymentStatus: t.paymentStatus,
       paymentAmount: t.paymentAmount,
       paymentTime: t.paymentTime,
       paymentAccountName: t.paymentAccountName,
@@ -1164,6 +1169,8 @@ function Index() {
       paymentReceipt: t.paymentReceipt,
       financeConfirmed: t.financeConfirmed,
       financeConfirmedTime: t.financeConfirmedTime,
+      errorReason: (t as any).errorReason,
+      errorDescription: (t as any).errorDescription,
       transferStatus: t.transferStatus,
       transferId: t.transferId,
       transferCompletedTime: t.transferCompletedTime,
@@ -1174,10 +1181,10 @@ function Index() {
 
   return (
     <div className="space-y-6 p-6">
-      <WelcomeSection onRecharge={handleRecharge} />
+      <WelcomeSection onRecharge={handleRecharge} onAddAccount={handleAddAccount} />
       <StatsCards />
 
-      <RechargeTasks onViewDetail={handleViewDetail} onUploadPayment={handleUploadPayment} onRecharge={handleRecharge} onCancelOrder={handleCancelOrder} onContinueSubmit={handleContinueSubmit} />
+      <RechargeTasks onViewDetail={handleViewDetail} onUploadPayment={handleUploadPayment} onRecharge={handleRecharge} onCancelOrder={handleCancelOrder} onContinueSubmit={handleContinueSubmit} onSpecialPayment={handleSpecialPayment} />
 
       <AccountOverview onRecharge={handleRecharge} onAddAccount={handleAddAccount} onViewLedger={handleViewLedger} onViewDetail={handleViewAccountDetail} />
 
@@ -1207,6 +1214,12 @@ function Index() {
         onOpenChange={setUploadPaymentOpen}
         task={buildPaymentTaskInfo(uploadTask)}
         mode={uploadMode}
+      />
+
+      <SpecialPaymentModal
+        open={specialPaymentOpen}
+        onOpenChange={setSpecialPaymentOpen}
+        task={specialPaymentTask}
       />
 
       <CancelOrderModal

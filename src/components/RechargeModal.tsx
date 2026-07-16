@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { createPortal } from "react-dom";
 import {
   X,
@@ -87,25 +89,6 @@ function formatAmount(value: number): string {
   return value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function copyToClipboard(text: string) {
-  navigator.clipboard.writeText(text).catch(() => {});
-}
-
-function CopyBtn({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="h-6 gap-1 text-xs text-muted-foreground hover:text-primary"
-      onClick={() => { copyToClipboard(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-    >
-      <Copy className="h-3 w-3" />
-      {copied ? "已复制" : "复制"}
-    </Button>
-  );
-}
-
 // ── Account Info Card ──────────────────────────────────────────────────────
 
 function AccountInfoCard({ account }: { account: Account }) {
@@ -143,24 +126,48 @@ function AccountInfoCard({ account }: { account: Account }) {
 function PaymentInfoCard({ amount, payableAmount, discountAmount, rechargeId, customerName, isSpecial }: {
   amount: string; payableAmount: string; discountAmount: string; rechargeId?: string; customerName?: string; isSpecial?: boolean;
 }) {
+  const [copiedAll, setCopiedAll] = useState(false);
   const remark = rechargeId ? `${rechargeId} / ${customerName ?? ""}` : "";
+
+  const fullPaymentText = [
+    `应付金额：¥${payableAmount}`,
+    `收款公司名称：${bankInfo.companyName}`,
+    `开户行：${bankInfo.bankName}`,
+    `银行账号：${bankInfo.accountNumber}`,
+    `打款备注：${remark || "充值单号 / 客户名称"}`,
+  ].join("\n");
+
+  const handleCopyAll = () => {
+    navigator.clipboard.writeText(fullPaymentText).then(
+      () => { setCopiedAll(true); setTimeout(() => setCopiedAll(false), 2000); },
+      () => toast.error("复制失败，请手动复制"),
+    );
+  };
 
   return (
     <div className="rounded-xl border-2 border-sapphire-light bg-gradient-to-br from-sapphire-subtle via-white to-blue-50/30 p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
-          <Landmark className="h-3.5 w-3.5 text-white" />
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
+            <Landmark className="h-3.5 w-3.5 text-white" />
+          </div>
+          <h3 className="text-sm font-bold text-foreground">付款信息</h3>
         </div>
-        <h3 className="text-sm font-bold text-foreground">付款信息</h3>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 gap-1.5 border-primary/30 text-xs text-primary hover:bg-primary/5 hover:border-primary/50"
+          onClick={handleCopyAll}
+        >
+          <Copy className="h-3 w-3" />
+          {copiedAll ? "已复制" : "一键复制付款信息"}
+        </Button>
       </div>
 
       {/* Payable amount — prominent */}
       <div className="mb-4">
         <p className="text-xs text-muted-foreground">应付金额</p>
-        <div className="flex items-baseline gap-1">
-          <span className="text-3xl font-bold tracking-tight text-primary">¥{payableAmount}</span>
-          <CopyBtn text={payableAmount} />
-        </div>
+        <span className="text-3xl font-bold tracking-tight text-primary">¥{payableAmount}</span>
       </div>
 
       {/* Bank info rows */}
@@ -200,12 +207,9 @@ function PaymentInfoCard({ amount, payableAmount, discountAmount, rechargeId, cu
 
 function BankRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-lg bg-white/70 px-3 py-1.5">
-      <div className="min-w-0">
-        <span className="text-[11px] text-muted-foreground">{label}</span>
-        <p className="truncate text-xs font-medium text-foreground">{value}</p>
-      </div>
-      <CopyBtn text={value} />
+    <div className="rounded-lg bg-white/70 px-3 py-1.5">
+      <span className="text-[11px] text-muted-foreground">{label}</span>
+      <p className="text-xs font-medium text-foreground">{value}</p>
     </div>
   );
 }
@@ -338,7 +342,7 @@ function FormStep({ onSuccess, onClose, onSaveDraft }: { onSuccess: (rechargeId:
                 <Wallet className={`h-5 w-5 ${isNormal ? "text-primary" : "text-muted-foreground"}`} />
                 <span className={`text-sm font-bold ${isNormal ? "text-primary" : "text-foreground"}`}>常规充值</span>
               </div>
-              <p className="text-xs leading-relaxed text-muted-foreground">客户完成付款并上传付款凭证后，米播进行审核、财务确认及平台充值处理。</p>
+              <p className="text-xs leading-relaxed text-muted-foreground">完成付款并上传有效付款凭证，审核通过后执行充值入账。</p>
             </label>
 
             <label className={`cursor-pointer rounded-xl border-2 p-4 transition-all ${
@@ -349,21 +353,14 @@ function FormStep({ onSuccess, onClose, onSaveDraft }: { onSuccess: (rechargeId:
                 <Zap className={`h-5 w-5 ${isSpecial ? "text-amber-600" : "text-muted-foreground"}`} />
                 <span className={`text-sm font-bold ${isSpecial ? "text-amber-700" : "text-foreground"}`}>特批充值</span>
               </div>
-              <p className="text-xs leading-relaxed text-muted-foreground">适用于充值处理紧急、需先提交申请并按约定时间完成付款的场景。</p>
+              <p className="text-xs leading-relaxed text-muted-foreground">紧急场景可先行申请充值、后续补款，申请前需结清往期特批欠款。</p>
             </label>
           </div>
 
-          {isSpecial && (
-            <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 pl-8">
-              <Info className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-              <div>
-                <p className="text-sm font-semibold text-amber-800">特批充值说明</p>
-                <p className="mt-1 text-xs leading-relaxed text-amber-700">
-                  特批充值适用于充值处理紧急、需优先评估处理的场景。提交申请后，米播将进行评估；评估通过后，客户需按约定付款时间完成付款并上传付款凭证。
-                </p>
-              </div>
-            </div>
-          )}
+          <div className="flex items-center gap-1.5 pl-8">
+            <Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <p className="text-[11px] text-muted-foreground">到账时效：17:00 前提交，预计 2–3 小时到账；17:00 后提交，到账时间可能适当顺延。</p>
+          </div>
         </section>
 
         {/* ═══ Section 2: Account ═══ */}
@@ -774,7 +771,7 @@ function SuccessStep({ rechargeId, isSpecial, onViewProgress, onBackHome }: {
       <div className="mt-8 flex items-center gap-3">
         <Button variant="outline" size="lg" onClick={onBackHome}>返回首页</Button>
         <Button size="lg" onClick={onViewProgress} className="gap-2">
-          查看充值进度 <ChevronRight className="h-4 w-4" />
+          查看更多 <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -784,6 +781,7 @@ function SuccessStep({ rechargeId, isSpecial, onViewProgress, onBackHome }: {
 // ── Main Modal ─────────────────────────────────────────────────────────────
 
 export function RechargeModal({ open, onOpenChange }: RechargeModalProps) {
+  const navigate = useNavigate();
   const [step, setStep] = useState<"form" | "success" | "draft">("form");
   const [rechargeId, setRechargeId] = useState("");
   const [isSpecial, setIsSpecial] = useState(false);
@@ -801,7 +799,7 @@ export function RechargeModal({ open, onOpenChange }: RechargeModalProps) {
     setStep("draft");
   }, []);
   const handleContinueEdit = useCallback(() => setStep("form"), []);
-  const handleViewProgress = useCallback(() => { onOpenChange(false); window.location.href = "/recharge"; }, [onOpenChange]);
+  const handleViewProgress = useCallback(() => { onOpenChange(false); navigate({ to: "/recharge" }); }, [onOpenChange, navigate]);
   const handleBackHome = useCallback(() => onOpenChange(false), [onOpenChange]);
 
   if (!mounted || !open) return null;
