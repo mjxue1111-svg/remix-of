@@ -40,22 +40,46 @@ const statusConfig: Record<string, string> = {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
+function InfoItem({
+  label,
+  value,
+  mono,
+  span,
+}: {
+  label: string;
+  value: string | React.ReactNode;
+  mono?: boolean;
+  span?: 1 | 2 | 3 | 4;
+}) {
+  const spanClass =
+    span === 2 ? "sm:col-span-2" : span === 3 ? "sm:col-span-3" : span === 4 ? "sm:col-span-4" : "";
+  return (
+    <div className={`min-w-0 space-y-1 ${spanClass}`}>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`text-sm font-medium text-foreground break-words ${mono ? "font-mono" : ""}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function InfoGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="h-4 w-1 rounded-full bg-primary" />
+        <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4">{children}</div>
+    </div>
+  );
+}
+
 function InfoCell({ label, value, mono }: { label: string; value: string | React.ReactNode; mono?: boolean }) {
   return (
     <div className="flex items-center border-b border-border/30 last:border-0">
       <span className="text-xs text-muted-foreground shrink-0 py-2.5 w-[110px]">{label}</span>
       <span className={`text-xs font-medium text-foreground py-2.5 pl-3 ${mono ? "font-mono" : ""}`}>{value}</span>
-    </div>
-  );
-}
-
-function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border border-border/60 flex-1 min-w-0">
-      <div className="border-b border-border/60 bg-muted/30 px-4 py-2.5">
-        <h4 className="text-sm font-semibold text-foreground">{title}</h4>
-      </div>
-      <div>{children}</div>
     </div>
   );
 }
@@ -96,35 +120,34 @@ function AccountInfoPage() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Basic Info + Invoice Info side by side */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
-            <InfoCard title="基本信息">
-              <InfoCell label="企业名称" value="上海云岚科技有限公司" />
-              <InfoCell label="企业简称" value="云岚科技" />
-              <InfoCell label="英文名称" value="Shanghai Yunlan Technology Co., Ltd." />
-              <InfoCell label="统一社会信用代码" value="91310115MACJ6K1C8A" mono />
-              <InfoCell label="注册号" value="310115004861028" mono />
-              <InfoCell label="组织机构代码" value="MACJ6K1C-8" mono />
-              <InfoCell label="纳税人识别号" value="91310115MACJ6K1C8A" mono />
-              <div className="flex items-center border-b border-border/30 last:border-0">
-                <span className="text-xs text-muted-foreground shrink-0 py-2.5 w-[110px]">企业状态</span>
-                <Badge className="ml-3 gap-1 border-emerald-200 bg-emerald-50 text-xs text-emerald-700"><CheckCircle2 className="h-3 w-3" />在营（开业）</Badge>
-              </div>
-            </InfoCard>
-            <InfoCard title="发票 / 支票信息">
-              <InfoCell label="发票抬头" value="上海云岚科技有限公司" />
-              <InfoCell label="纳税人类型" value="增值税一般纳税人" />
-              <InfoCell label="发票类型" value="增值税专用发票" />
-              <InfoCell label="开户银行" value="招商银行股份有限公司上海张江支行" />
-              <div className="flex items-center border-b border-border/30 last:border-0">
-                <span className="text-xs text-muted-foreground shrink-0 py-2.5 w-[110px]">银行账户</span>
-                <span className="text-xs font-mono font-medium text-foreground py-2.5 pl-3">6225 **** **** 0001</span>
-              </div>
-              <InfoCell label="开票电话" value="021-58886666" />
-              <InfoCell label="开票地址" value="上海市浦东新区张江高科技园区科苑路 88 号" />
-            </InfoCard>
-          </div>
+        <CardContent className="space-y-6">
+          <InfoGroup title="基本信息">
+            <InfoItem label="企业名称" value="上海云岚科技有限公司" span={2} />
+            <InfoItem label="企业简称" value="云岚科技" />
+            <InfoItem
+              label="企业状态"
+              value={
+                <Badge className="gap-1 border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
+                  <CheckCircle2 className="h-3 w-3" />在营（开业）
+                </Badge>
+              }
+            />
+            <InfoItem label="英文名称" value="Shanghai Yunlan Technology Co., Ltd." span={2} />
+            <InfoItem label="统一社会信用代码" value="91310115MACJ6K1C8A" mono span={2} />
+            <InfoItem label="注册号" value="310115004861028" mono />
+            <InfoItem label="组织机构代码" value="MACJ6K1C-8" mono />
+            <InfoItem label="纳税人识别号" value="91310115MACJ6K1C8A" mono span={2} />
+          </InfoGroup>
+          <div className="h-px w-full bg-border/60" />
+          <InfoGroup title="发票 / 支票信息">
+            <InfoItem label="发票抬头" value="上海云岚科技有限公司" span={2} />
+            <InfoItem label="纳税人类型" value="增值税一般纳税人" />
+            <InfoItem label="发票类型" value="增值税专用发票" />
+            <InfoItem label="开户银行" value="招商银行股份有限公司上海张江支行" span={2} />
+            <InfoItem label="银行账户" value="6225 **** **** 0001" mono />
+            <InfoItem label="开票电话" value="021-58886666" />
+            <InfoItem label="开票地址" value="上海市浦东新区张江高科技园区科苑路 88 号" span={4} />
+          </InfoGroup>
         </CardContent>
       </Card>
 
@@ -144,17 +167,13 @@ function AccountInfoPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
-            <div className="rounded-lg border border-border/60 bg-muted/30 w-full">
-              <InfoCell label="登录账号" value="yunlan_admin" mono />
-              <InfoCell label="绑定手机号" value="173****451" />
-              <InfoCell label="登录邮箱" value="shu****.yan@yunlan.com" />
-            </div>
-            <div className="rounded-lg border border-border/60 bg-muted/30 w-full">
-              <InfoCell label="当前账号角色" value="客户管理员" />
-              <InfoCell label="最近登录时间" value="2026-07-15 14:32" />
-              <InfoCell label="密码" value="********" />
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4 w-full">
+            <InfoItem label="登录账号" value="yunlan_admin" mono />
+            <InfoItem label="绑定手机号" value="173****451" />
+            <InfoItem label="登录邮箱" value="shu****.yan@yunlan.com" />
+            <InfoItem label="当前账号角色" value="客户管理员" />
+            <InfoItem label="最近登录时间" value="2026-07-15 14:32" />
+            <InfoItem label="密码" value="********" />
           </div>
         </CardContent>
       </Card>
