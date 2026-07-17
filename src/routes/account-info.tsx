@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Building2, User, Shield, Plus, CheckCircle2, Eye, Pencil, Lock,
@@ -63,21 +63,17 @@ function DescTable({ rows }: { rows: Cell[][] }) {
           {rows.map((row, ri) => (
             <tr key={ri} className="border-b border-border/60 last:border-0">
               {row.map((cell, ci) => (
-                <>
-                  <th
-                    key={`${ri}-${ci}-l`}
-                    className="border-r border-border/60 bg-muted/40 px-4 py-3 text-left align-middle text-xs font-normal text-muted-foreground"
-                  >
+                <Fragment key={ci}>
+                  <th className="border-r border-border/60 bg-muted/40 px-4 py-3 text-left align-middle text-xs font-normal text-muted-foreground">
                     {cell.label}
                   </th>
                   <td
-                    key={`${ri}-${ci}-v`}
                     colSpan={cell.colSpan === 3 ? 3 : 1}
                     className={`border-r border-border/60 bg-background px-4 py-3 align-middle text-sm font-medium text-foreground last:border-r-0 ${cell.mono ? "font-mono" : ""}`}
                   >
                     {cell.value}
                   </td>
-                </>
+                </Fragment>
               ))}
             </tr>
           ))}
