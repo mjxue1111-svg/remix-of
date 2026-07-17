@@ -170,54 +170,6 @@ function DashboardPage() {
         ))}
       </div>
 
-      {/* Account balance breakdown */}
-      <Card className="border-border/60 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">账户余额拆分</CardTitle>
-          <CardDescription>按账户查看余额、充值与消耗情况</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="text-xs font-semibold min-w-[180px]">账户信息</TableHead>
-                <TableHead className="text-xs font-semibold text-right">当前余额</TableHead>
-                <TableHead className="text-xs font-semibold text-right">可用余额</TableHead>
-                <TableHead className="text-xs font-semibold text-right">冻结金额</TableHead>
-                <TableHead className="text-xs font-semibold text-right">本月充值</TableHead>
-                <TableHead className="text-xs font-semibold text-right">本月消耗</TableHead>
-                <TableHead className="text-xs font-semibold">更新时间</TableHead>
-                <TableHead className="text-xs font-semibold">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {accounts.map(a => (
-                <TableRow key={a.accountId}>
-                  <TableCell className="py-3">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-1"><Badge className="h-3.5 gap-0.5 border-blue-200 bg-blue-50 px-1 text-[9px] text-blue-700">星图</Badge><span className="text-xs font-semibold">{a.name}</span><Badge className={`h-3.5 px-1 text-[9px] ${accountTypeClass[a.accountType] ?? ""}`}>{a.accountType}</Badge></div>
-                      <p className="text-[10px] text-muted-foreground">ID：{a.accountId}</p>
-                      <p className="text-[10px] text-muted-foreground">主体：{a.subject}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right text-xs font-semibold">{a.balance}</TableCell>
-                  <TableCell className="text-right text-xs">{a.available}</TableCell>
-                  <TableCell className="text-right text-xs text-amber-600">{a.frozen}</TableCell>
-                  <TableCell className="text-right text-xs text-emerald-600">{a.monthlyRecharge}</TableCell>
-                  <TableCell className="text-right text-xs text-amber-600">{a.monthlySpend}</TableCell>
-                  <TableCell className="text-[10px] text-muted-foreground">{a.updatedAt}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" className="h-6 text-[10px] text-primary" onClick={() => setSelectedAccount(a.accountId)}>
-                      <Eye className="mr-1 h-2.5 w-2.5" />查看流水
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
       {/* Trend chart */}
       <Card className="border-border/60 shadow-sm">
         <CardHeader className="pb-2">
