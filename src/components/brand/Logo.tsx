@@ -1,4 +1,3 @@
-import logoAsset from "@/assets/mixianyun-logo.png.asset.json";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
