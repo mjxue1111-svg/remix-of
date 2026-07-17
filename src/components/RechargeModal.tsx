@@ -533,28 +533,6 @@ function FormStep({ onSuccess, onClose, onSaveDraft }: { onSuccess: (rechargeId:
             </div>
 
             <div className="space-y-4 pl-8">
-              {/* ── 4-step main progress bar ─────────────── */}
-              <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
-                <p className="mb-3 text-xs font-semibold text-amber-800">特批主流程进度</p>
-                <div className="flex items-center">
-                  {approvalSteps.map((step, i) => (
-                    <div key={i} className="flex items-center flex-1 last:flex-none">
-                      <div className="flex flex-col items-center gap-1">
-                        <div className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-bold ${
-                          i === 0 ? "border-amber-400 bg-amber-100 text-amber-700" : "border-muted bg-muted text-muted-foreground"
-                        }`}>
-                          {i + 1}
-                        </div>
-                        <span className="text-center text-[10px] leading-tight text-muted-foreground">{step.label}</span>
-                      </div>
-                      {i < approvalSteps.length - 1 && (
-                        <div className="mx-1 h-px flex-1 bg-muted" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {/* ── 特批原因 — full width ────────────────── */}
               <div className="space-y-1.5">
                 <Label className="text-sm font-semibold">特批原因 <span className="text-destructive">*</span></Label>
@@ -577,73 +555,6 @@ function FormStep({ onSuccess, onClose, onSaveDraft }: { onSuccess: (rechargeId:
                 </div>
               </div>
 
-              {/* ── Payment obligation card ────────────────── */}
-              <div className="rounded-xl border-2 border-amber-200 bg-amber-50/40 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="flex h-6 w-6 items-center justify-center rounded bg-amber-100">
-                    <Clock className="h-3.5 w-3.5 text-amber-600" />
-                  </div>
-                  <h4 className="text-sm font-bold text-amber-800">后续需完成</h4>
-                </div>
-
-                <p className="mb-3 text-xs leading-relaxed text-amber-700">
-                  特批充值完成后，请按承诺时间完成付款并上传付款凭证。米播将根据付款凭证进行后续财务确认。
-                </p>
-
-                {/* Status badge */}
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xs text-muted-foreground">当前状态：</span>
-                  {approvalFile ? (
-                    <Badge className="gap-1 border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
-                      <CheckCircle2 className="h-3 w-3" />已上传付款凭证
-                    </Badge>
-                  ) : (
-                    <Badge className="gap-1 border-amber-200 bg-amber-50 text-xs text-amber-700">
-                      <Clock className="h-3 w-3" />待上传付款凭证
-                    </Badge>
-                  )}
-                </div>
-
-                {/* Info rows */}
-                <div className="space-y-1.5 mb-3 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">承诺付款金额</span>
-                    <span className="font-semibold text-foreground">¥{formatAmount(payableAmount)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">承诺付款时间</span>
-                    <span className="font-medium text-foreground">{expectedRepayTime ? expectedRepayTime.replace("T", " ") : "待填写"}</span>
-                  </div>
-                  {approvalFile && (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">付款凭证</span>
-                        <span className="font-medium text-primary">{approvalFile.name}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">上传时间</span>
-                        <span className="font-medium text-foreground">{new Date().toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Upload area */}
-                <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-amber-200 bg-white/60 p-3 transition-colors hover:border-primary/50 hover:bg-sapphire-subtle">
-                  {approvalFile ? (
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-5 w-5 text-primary" />
-                      <span className="text-sm text-muted-foreground">点击重新上传付款凭证</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Upload className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">点击上传付款凭证（JPG/PNG/PDF）</span>
-                    </div>
-                  )}
-                  <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={handleFileChange(setApprovalFile)} className="hidden" />
-                </label>
-              </div>
             </div>
           </section>
         )}

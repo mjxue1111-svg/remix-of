@@ -65,13 +65,6 @@ const recentRecharges = [
   { id: "RC-2026-07006", amount: "¥100,000.00", paidAmount: "¥98,000.00", type: "草稿", node: "未提交", order: "未完成" },
 ];
 
-const logs = [
-  { time: "2026-07-01 10:30", action: "提交绑定账户", operator: "客户 李明" },
-  { time: "2026-07-01 11:20", action: "米播审核通过", operator: "米播平台媒介" },
-  { time: "2026-07-10 14:32", action: "系统同步余额", operator: "系统" },
-  { time: "2026-07-10 15:20", action: "账户收到充值", operator: "系统" },
-];
-
 export function AccountDetailDrawer({ open, onOpenChange, account, onRecharge, onViewLedger }: AccountDetailDrawerProps) {
   if (!account) return null;
 
@@ -163,24 +156,6 @@ export function AccountDetailDrawer({ open, onOpenChange, account, onRecharge, o
             </div>
           </SectionCard>
 
-          {/* Section 6: Logs */}
-          <SectionCard title="操作日志" icon={<Clock className="h-4 w-4 text-primary" />}>
-            <div className="relative space-y-0">
-              {logs.map((log, i) => {
-                const isLast = i === logs.length - 1;
-                return (
-                  <div key={i} className="relative flex gap-3 pb-4">
-                    {!isLast && <div className="absolute left-[7px] top-6 h-[calc(100%-12px)] w-px bg-border" />}
-                    <div className="relative z-10 mt-1 h-3.5 w-3.5 shrink-0 rounded-full border-2 border-primary bg-background" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2"><span className="text-xs font-medium text-foreground">{log.action}</span><span className="text-[10px] text-muted-foreground">{log.time}</span></div>
-                      <p className="text-xs text-muted-foreground">{log.operator}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </SectionCard>
         </div>
 
         {/* Footer */}
