@@ -40,22 +40,46 @@ const statusConfig: Record<string, string> = {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
+function InfoItem({
+  label,
+  value,
+  mono,
+  span,
+}: {
+  label: string;
+  value: string | React.ReactNode;
+  mono?: boolean;
+  span?: 1 | 2 | 3 | 4;
+}) {
+  const spanClass =
+    span === 2 ? "sm:col-span-2" : span === 3 ? "sm:col-span-3" : span === 4 ? "sm:col-span-4" : "";
+  return (
+    <div className={`min-w-0 space-y-1 ${spanClass}`}>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`text-sm font-medium text-foreground break-words ${mono ? "font-mono" : ""}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function InfoGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="h-4 w-1 rounded-full bg-primary" />
+        <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4">{children}</div>
+    </div>
+  );
+}
+
 function InfoCell({ label, value, mono }: { label: string; value: string | React.ReactNode; mono?: boolean }) {
   return (
     <div className="flex items-center border-b border-border/30 last:border-0">
       <span className="text-xs text-muted-foreground shrink-0 py-2.5 w-[110px]">{label}</span>
       <span className={`text-xs font-medium text-foreground py-2.5 pl-3 ${mono ? "font-mono" : ""}`}>{value}</span>
-    </div>
-  );
-}
-
-function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border border-border/60 flex-1 min-w-0">
-      <div className="border-b border-border/60 bg-muted/30 px-4 py-2.5">
-        <h4 className="text-sm font-semibold text-foreground">{title}</h4>
-      </div>
-      <div>{children}</div>
     </div>
   );
 }
