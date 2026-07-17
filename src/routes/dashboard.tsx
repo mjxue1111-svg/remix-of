@@ -5,6 +5,10 @@ import {
   CheckCircle2, Clock, Zap, Layers, BarChart3, Snowflake,
   Filter, Building2, FileText,
 } from "lucide-react";
+import {
+  ResponsiveContainer, ComposedChart, CartesianGrid, XAxis, YAxis,
+  Tooltip, Legend, Bar, Line,
+} from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,153 +65,182 @@ const typeConfig: Record<string, { className: string }> = {
   unfreeze: { className: "border-cyan-200 bg-cyan-50 text-cyan-700" },
 };
 
-// ── Trend chart (dual bar + line, full-width) ──────────────────────────────
+// ── Trend chart (dual bar + line, full-width via recharts) ─────────────────
+
+// Colors: blue (recharge), orange (spend), green (balance line)
+const CHART_COLORS = {
+  recharge: "#2563EB",
+  spend: "#F59E0B",
+  balance: "#10B981",
+};
+
+// Sample date labels per time range (would come from API in prod)
+function buildTrendData(timeRange: string) {
+  const days =
+    timeRange === "30"
+      ? ["7/1","7/3","7/5","7/7","7/9","7/11","7/13","7/15","7/17","7/19","7/21","7/23","7/25","7/27","7/29"]
+      : timeRange === "60"
+      ? ["6/1","6/6","6/11","6/16","6/21","6/26","7/1","7/6","7/11","7/16","7/21","7/26"]
+      : timeRange === "90"
+      ? ["W1","W2","W3","W4","W5","W6","W7","W8","W9","W10","W11","W12","W13"]
+      : timeRange === "180"
+      ? ["2月","3月","4月","5月","6月","7月"]
+      : ["8月","9月","10月","11月","12月","1月","2月","3月","4月","5月","6月","7月"];
+
+  // deterministic-ish pseudo-random for stable render
+  let seed = 42;
+  const rnd = () => {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+  };
+
+  let balance = 200;
+  return days.map((d) => {
+    const recharge = Math.round(rnd() * 40 + 20);
+    const spend = Math.round(rnd() * 35 + 10);
+    balance = balance + recharge - spend;
+    return {
+      date: d,
+      recharge,
+      spend,
+      balance,
+      net: recharge - spend,
+    };
+  });
+}
+
+function TrendTooltip({ active, payload, label }: any) {
+  if (!active || !payload || !payload.length) return null;
+  const row = payload[0].payload;
+  return (
+    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-lg text-xs">
+      <p className="mb-1.5 font-semibold text-foreground">{label}</p>
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-6">
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <span className="h-2 w-2 rounded-sm" style={{ background: CHART_COLORS.recharge }} />充值
+          </span>
+          <span className="font-medium text-foreground">¥{row.recharge}K</span>
+        </div>
+        <div className="flex items-center justify-between gap-6">
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <span className="h-2 w-2 rounded-sm" style={{ background: CHART_COLORS.spend }} />消耗
+          </span>
+          <span className="font-medium text-foreground">¥{row.spend}K</span>
+        </div>
+        <div className="flex items-center justify-between gap-6">
+          <span className="text-muted-foreground">净变化</span>
+          <span className={`font-medium ${row.net >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+            {row.net >= 0 ? "+" : ""}¥{row.net}K
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-6 border-t border-border/60 pt-1 mt-1">
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <span className="h-0.5 w-3 rounded-full" style={{ background: CHART_COLORS.balance }} />期末余额
+          </span>
+          <span className="font-semibold text-emerald-600">¥{row.balance}K</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function TrendChart({ timeRange }: { timeRange: string }) {
-  const days = timeRange === "30" ? ["7/5","7/8","7/11","7/14","7/17","7/20","7/23","7/26","7/29","8/1","8/4","8/7"]
-    : timeRange === "60" ? ["6/15","6/22","6/29","7/6","7/13","7/20","7/27","8/3"]
-    : timeRange === "90" ? ["5/10","5/25","6/9","6/23","7/7","7/21","8/4"]
-    : timeRange === "180" ? ["2/1","3/1","4/1","5/1","6/1","7/1","8/1"]
-    : ["1/1","2/1","3/1","4/1","5/1","6/1","7/1","8/1"];
+  const data = buildTrendData(timeRange);
 
-  const rechargeData = days.map(() => Math.round(Math.random() * 40 + 20));
-  const spendData = days.map(() => Math.round(Math.random() * 35 + 10));
-  const balanceData = days.reduce<number[]>((acc, _, i) => {
-    const prev = i === 0 ? 200 : acc[i - 1];
-    acc.push(prev + rechargeData[i] - spendData[i]);
-    return acc;
-  }, []);
-  const dataMax = Math.max(...rechargeData, ...spendData, ...balanceData) * 1.15;
+  const totalRecharge = data.reduce((a, b) => a + b.recharge, 0);
+  const totalSpend = data.reduce((a, b) => a + b.spend, 0);
+  const endBalance = data[data.length - 1].balance;
+  const netChange = totalRecharge - totalSpend;
 
-  const totalRecharge = rechargeData.reduce((a, b) => a + b, 0);
-  const totalSpend = spendData.reduce((a, b) => a + b, 0);
-  const endBalance = balanceData[balanceData.length - 1];
-  const netChange = endBalance - 200;
+  // X-axis label sampling
+  const tickInterval =
+    timeRange === "30" ? 1
+    : timeRange === "60" ? 1
+    : timeRange === "90" ? 0
+    : 0;
 
-  const [tooltipIdx, setTooltipIdx] = useState<number | null>(null);
+  const summary = [
+    { label: "期间充值", value: `¥${totalRecharge}K`, color: "text-primary", bar: CHART_COLORS.recharge },
+    { label: "期间消耗", value: `¥${totalSpend}K`, color: "text-amber-600", bar: CHART_COLORS.spend },
+    { label: "期末余额", value: `¥${endBalance}K`, color: "text-emerald-600", bar: CHART_COLORS.balance },
+    { label: "净变化", value: `${netChange >= 0 ? "+" : ""}¥${netChange}K`, color: netChange >= 0 ? "text-emerald-600" : "text-red-500", bar: netChange >= 0 ? CHART_COLORS.balance : "#EF4444" },
+  ];
 
   return (
-    <div className="space-y-5">
-      {/* Summary indicators on top */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { label: "期间充值", value: `¥${totalRecharge}K`, color: "text-primary" },
-          { label: "期间消耗", value: `¥${totalSpend}K`, color: "text-amber-600" },
-          { label: "期末余额", value: `¥${endBalance}K`, color: "text-foreground" },
-          { label: "净变化", value: `${netChange >= 0 ? "+" : ""}¥${netChange}K`, color: netChange >= 0 ? "text-emerald-600" : "text-red-500" },
-        ].map(s => (
-          <div key={s.label} className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 text-center">
-            <p className="text-[11px] text-muted-foreground">{s.label}</p>
-            <p className={`mt-1 text-base font-bold ${s.color}`}>{s.value}</p>
+    <div className="space-y-4">
+      {/* Summary indicators — Option A: on top, tightly coupled */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {summary.map((s) => (
+          <div key={s.label} className="relative rounded-lg border border-border/60 bg-muted/20 px-4 py-3 overflow-hidden">
+            <span className="absolute left-0 top-0 h-full w-1" style={{ background: s.bar }} />
+            <p className="text-xs text-muted-foreground">{s.label}</p>
+            <p className={`mt-1 text-xl font-bold ${s.color}`}>{s.value}</p>
           </div>
         ))}
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-5">
-        <div className="flex items-center gap-1.5"><div className="h-3 w-3 rounded-sm bg-primary" /><span className="text-xs text-muted-foreground">充值</span></div>
-        <div className="flex items-center gap-1.5"><div className="h-3 w-3 rounded-sm bg-amber-400" /><span className="text-xs text-muted-foreground">消耗</span></div>
-        <div className="flex items-center gap-1.5"><div className="h-0.5 w-4 bg-emerald-500 rounded-full" /><span className="text-xs text-muted-foreground">余额趋势</span></div>
+      <div className="flex flex-wrap items-center gap-5 pl-1">
+        <div className="flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded-sm" style={{ background: CHART_COLORS.recharge }} />
+          <span className="text-xs text-muted-foreground">充值金额</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded-sm" style={{ background: CHART_COLORS.spend }} />
+          <span className="text-xs text-muted-foreground">消耗金额</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="h-0.5 w-4 rounded-full" style={{ background: CHART_COLORS.balance }} />
+          <span className="text-xs text-muted-foreground">余额趋势</span>
+        </div>
+        <span className="ml-auto text-[11px] text-muted-foreground">单位：千元（K）</span>
       </div>
 
-      {/* Full-width SVG chart */}
-      <svg viewBox="-60 -10 820 330" className="w-full" style={{ height: 320 }} preserveAspectRatio="xMidYMid meet">
-        {/* Grid lines */}
-        {[1, 0.75, 0.5, 0.25, 0].map(pct => (
-          <g key={`g-${pct}`}>
-            <line x1="0" y1={pct * 280} x2="760" y2={pct * 280} stroke="oklch(0.9 0.01 260)" strokeWidth="1" />
-            <text x="-8" y={pct * 280 + 4} textAnchor="end" className="text-[11px] fill-muted-foreground">{Math.round(dataMax * pct)}</text>
-          </g>
-        ))}
-
-        {/* Bars */}
-        {days.map((d, i) => {
-          const barCenterX = (i / days.length) * 760 + (760 / days.length) / 2;
-          const barW = Math.min(14, (760 / days.length) * 0.35);
-          const gap = 4;
-          const rH = (rechargeData[i] / dataMax) * 280;
-          const sH = (spendData[i] / dataMax) * 280;
-          return (
-            <g key={d}>
-              {/* Recharge bar - blue */}
-              <rect
-                x={barCenterX - barW - gap / 2}
-                y={280 - rH}
-                width={barW}
-                height={rH}
-                rx="3"
-                fill="oklch(0.58 0.23 259)"
-                opacity="0.88"
-              />
-              {/* Spend bar - orange */}
-              <rect
-                x={barCenterX + gap / 2}
-                y={280 - sH}
-                width={barW}
-                height={sH}
-                rx="3"
-                fill="oklch(0.78 0.16 75)"
-                opacity="0.82"
-              />
-            </g>
-          );
-        })}
-
-        {/* Balance polyline */}
-        <polyline
-          points={balanceData.map((v, i) => {
-            const x = (i / days.length) * 760 + (760 / days.length) / 2;
-            const y = 280 - (v / dataMax) * 280;
-            return `${x},${y}`;
-          }).join(" ")}
-          fill="none"
-          stroke="oklch(0.66 0.16 155)"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        {/* Balance dots */}
-        {balanceData.map((v, i) => {
-          const x = (i / days.length) * 760 + (760 / days.length) / 2;
-          const y = 280 - (v / dataMax) * 280;
-          return (
-            <circle key={`bd-${i}`} cx={x} cy={y} r="3.5" fill="oklch(0.66 0.16 155)" stroke="white" strokeWidth="2" />
-          );
-        })}
-
-        {/* X-axis labels */}
-        {days.map((d, i) => (
-          <text
-            key={`xl-${i}`}
-            x={(i / days.length) * 760 + (760 / days.length) / 2}
-            y="300"
-            textAnchor="middle"
-            className="text-[11px] fill-muted-foreground"
-          >{d}</text>
-        ))}
-      </svg>
-
-      {/* Hover interaction layer */}
-      <div className="relative flex" style={{ height: 32, marginTop: -24 }}>
-        {days.map((d, i) => (
-          <div
-            key={d}
-            className="relative flex-1 cursor-crosshair"
-            onMouseEnter={() => setTooltipIdx(i)}
-            onMouseLeave={() => setTooltipIdx(null)}
-          >
-            {tooltipIdx === i && (
-              <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-20 rounded-lg border border-border bg-card px-3 py-2 shadow-lg whitespace-nowrap pointer-events-none">
-                <p className="text-[11px] font-semibold text-foreground mb-1">{d}</p>
-                <div className="space-y-0.5">
-                  <p className="text-[10px]"><span className="text-muted-foreground">充值：</span><span className="font-medium text-primary">¥{rechargeData[i]}K</span></p>
-                  <p className="text-[10px]"><span className="text-muted-foreground">消耗：</span><span className="font-medium text-amber-600">¥{spendData[i]}K</span></p>
-                  <p className="text-[10px]"><span className="text-muted-foreground">余额：</span><span className="font-medium text-emerald-600">¥{balanceData[i]}K</span></p>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+      {/* Full-width composed chart */}
+      <div className="w-full" style={{ height: 340 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={data} margin={{ top: 12, right: 28, bottom: 8, left: 8 }} barGap={4} barCategoryGap="20%">
+            <CartesianGrid stroke="#EEF2F7" vertical={false} />
+            <XAxis
+              dataKey="date"
+              tick={{ fill: "#6B7280", fontSize: 12 }}
+              tickLine={false}
+              axisLine={{ stroke: "#E5E7EB" }}
+              interval={tickInterval as any}
+            />
+            <YAxis
+              yAxisId="left"
+              tick={{ fill: "#6B7280", fontSize: 12 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v) => `¥${v}K`}
+              width={56}
+            />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tick={{ fill: "#10B981", fontSize: 12 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v) => `¥${v}K`}
+              width={56}
+            />
+            <Tooltip content={<TrendTooltip />} cursor={{ fill: "rgba(37, 99, 235, 0.06)" }} />
+            <Bar yAxisId="left" dataKey="recharge" name="充值金额" fill={CHART_COLORS.recharge} radius={[4, 4, 0, 0]} maxBarSize={22} />
+            <Bar yAxisId="left" dataKey="spend" name="消耗金额" fill={CHART_COLORS.spend} radius={[4, 4, 0, 0]} maxBarSize={22} />
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="balance"
+              name="余额趋势"
+              stroke={CHART_COLORS.balance}
+              strokeWidth={2.5}
+              dot={{ r: 3, fill: CHART_COLORS.balance, stroke: "#fff", strokeWidth: 2 }}
+              activeDot={{ r: 5 }}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
