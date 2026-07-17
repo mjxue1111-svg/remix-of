@@ -69,7 +69,7 @@ function AccountInfoPage() {
   const [detailAccount, setDetailAccount] = useState<typeof starAccounts[0] | null>(null);
 
   return (
-    <div className="space-y-5 p-6 max-w-6xl mx-auto">
+    <div className="w-full space-y-5 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -98,7 +98,7 @@ function AccountInfoPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Basic Info + Invoice Info side by side */}
-          <div className="flex gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
             <InfoCard title="基本信息">
               <InfoCell label="企业名称" value="上海云岚科技有限公司" />
               <InfoCell label="企业简称" value="云岚科技" />
@@ -144,13 +144,13 @@ function AccountInfoPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4">
-            <div className="rounded-lg border border-border/60 bg-muted/30 flex-1">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
+            <div className="rounded-lg border border-border/60 bg-muted/30 w-full">
               <InfoCell label="登录账号" value="yunlan_admin" mono />
               <InfoCell label="绑定手机号" value="173****451" />
               <InfoCell label="登录邮箱" value="shu****.yan@yunlan.com" />
             </div>
-            <div className="rounded-lg border border-border/60 bg-muted/30 flex-1">
+            <div className="rounded-lg border border-border/60 bg-muted/30 w-full">
               <InfoCell label="当前账号角色" value="客户管理员" />
               <InfoCell label="最近登录时间" value="2026-07-15 14:32" />
               <InfoCell label="密码" value="********" />
