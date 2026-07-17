@@ -263,33 +263,6 @@ function LoginForm({
       <div className="space-y-4">
         <IdentityPicker value={identity} onChange={setLocalIdentity} label="选择身份进入" />
 
-        <div className="flex h-9 rounded-lg border border-input bg-background p-0.5 text-sm">
-          <button
-            type="button"
-            onClick={() => setLoginMode("password")}
-            className={cn(
-              "flex-1 rounded-md py-1 text-xs font-medium transition",
-              loginMode === "password"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            密码登录
-          </button>
-          <button
-            type="button"
-            onClick={() => setLoginMode("otp")}
-            className={cn(
-              "flex-1 rounded-md py-1 text-xs font-medium transition",
-              loginMode === "otp"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            验证码登录
-          </button>
-        </div>
-
         <div className="space-y-3.5">
           <div className="space-y-1">
             <Label htmlFor="phone" className="text-xs">
@@ -351,7 +324,15 @@ function LoginForm({
             <span className="text-muted-foreground">
               测试: {PRESET_ACCOUNTS[identity].phone} / {PRESET_ACCOUNTS[identity].password}
             </span>
-            {loginMode === "password" && (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setLoginMode(loginMode === "password" ? "otp" : "password")}
+                className="font-medium text-primary hover:underline"
+              >
+                {loginMode === "password" ? "验证码登录" : "密码登录"}
+              </button>
+              {loginMode === "password" && (
               <button
                 type="button"
                 onClick={() => onForgot(phone)}
@@ -359,7 +340,8 @@ function LoginForm({
               >
                 忘记密码?
               </button>
-            )}
+              )}
+            </div>
           </div>
 
           <Button
