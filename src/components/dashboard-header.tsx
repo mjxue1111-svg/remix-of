@@ -1,38 +1,170 @@
+import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Building2, User, ShieldCheck, Bell } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
+  DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Building2, User, ShieldCheck, Bell, UserCircle, BookOpen,
+  Maximize, Minimize, Globe, Type, Lock, LogOut,
+  ChevronDown, Check,
+} from "lucide-react";
 
 export function DashboardHeader() {
-  return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 px-6 backdrop-blur-md">
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Building2 className="h-4 w-4 text-primary" />
-          <span className="font-medium text-foreground">上海云岚科技有限公司</span>
-        </div>
-        <div className="hidden h-4 w-px bg-border sm:block" />
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <User className="h-4 w-4" />
-          <span>联系人：李明</span>
-        </div>
-        <div className="hidden h-4 w-px bg-border sm:block" />
-        <Badge variant="outline" className="gap-1 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
-          <ShieldCheck className="h-3 w-3" />
-          账户状态正常
-        </Badge>
-      </div>
+  const navigate = useNavigate();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fontSize, setFontSize] = useState<"small" | "default" | "large">("default");
+  const [lang, setLang] = useState<"zh" | "en">("zh");
+  const [lockOpen, setLockOpen] = useState(false);
+  const [lockPwd, setLockPwd] = useState("");
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
-      <div className="flex items-center gap-4">
-        <button className="relative rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
-        </button>
-        <Avatar className="h-9 w-9 border border-border">
-          <AvatarFallback className="bg-primary text-xs font-medium text-primary-foreground">
-            李明
-          </AvatarFallback>
-        </Avatar>
-      </div>
-    </header>
+  const handleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("star-map.mockSession");
+    navigate({ to: "/login" });
+  };
+
+  return (
+    <>
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 px-6 backdrop-blur-md">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Building2 className="h-4 w-4 text-primary" />
+            <span className="font-medium text-foreground">上海云岚科技有限公司</span>
+          </div>
+          <div className="hidden h-4 w-px bg-border sm:block" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <User className="h-4 w-4" />
+            <span>联系人：李明</span>
+          </div>
+          <div className="hidden h-4 w-px bg-border sm:block" />
+          <Badge variant="outline" className="gap-1 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+            <ShieldCheck className="h-3 w-3" />
+            账户状态正常
+          </Badge>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <button className="relative rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+            <Bell className="h-5 w-5" />
+            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
+          </button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-accent cursor-pointer">
+                <Avatar className="h-8 w-8 border border-border">
+                  <AvatarFallback className="bg-primary text-xs font-medium text-primary-foreground">李</AvatarFallback>
+                </Avatar>
+                <span className="font-medium text-foreground hidden sm:inline">李明</span>
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem onClick={() => navigate({ to: "/account-info" })}>
+                <UserCircle className="mr-2 h-4 w-4" />我的账号信息
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => alert("用户手册功能建设中")}>
+                <BookOpen className="mr-2 h-4 w-4" />用户手册
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleFullscreen}>
+                {isFullscreen ? <Minimize className="mr-2 h-4 w-4" /> : <Maximize className="mr-2 h-4 w-4" />}
+                {isFullscreen ? "退出全屏" : "全屏显示"}
+              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Globe className="mr-2 h-4 w-4" />语言切换
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-36">
+                  <DropdownMenuItem onClick={() => setLang("zh")}>
+                    简体中文 {lang === "zh" && <Check className="ml-auto h-4 w-4" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setLang("en")}>
+                    English {lang === "en" && <Check className="ml-auto h-4 w-4" />}
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Type className="mr-2 h-4 w-4" />字体调整
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-28">
+                  <DropdownMenuItem onClick={() => setFontSize("small")}>
+                    小 {fontSize === "small" && <Check className="ml-auto h-4 w-4" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setFontSize("default")}>
+                    默认 {fontSize === "default" && <Check className="ml-auto h-4 w-4" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setFontSize("large")}>
+                    大 {fontSize === "large" && <Check className="ml-auto h-4 w-4" />}
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuItem onClick={() => setLockOpen(true)}>
+                <Lock className="mr-2 h-4 w-4" />锁定屏幕
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setLogoutOpen(true)} className="text-destructive focus:text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />退出系统
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+
+      {/* Lock Screen Modal */}
+      {lockOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4">
+            <Avatar className="h-20 w-20 border-2 border-border">
+              <AvatarFallback className="bg-primary text-2xl font-bold text-primary-foreground">李</AvatarFallback>
+            </Avatar>
+            <h2 className="text-xl font-semibold text-foreground">李明</h2>
+            <p className="text-sm text-muted-foreground">屏幕已锁定，请输入密码解锁</p>
+            <div className="flex items-center gap-2 mt-2">
+              <Input
+                type="password"
+                placeholder="请输入登录密码"
+                value={lockPwd}
+                onChange={(e) => setLockPwd(e.target.value)}
+                className="w-56"
+                onKeyDown={(e) => { if (e.key === "Enter") { setLockOpen(false); setLockPwd(""); } }}
+              />
+              <Button onClick={() => { setLockOpen(false); setLockPwd(""); }}>解锁</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Logout Confirmation */}
+      {logoutOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setLogoutOpen(false)} />
+          <div className="relative z-10 w-full max-w-sm rounded-2xl border border-border bg-background p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold text-foreground">确认退出系统？</h3>
+            <p className="mt-2 text-sm text-muted-foreground">退出后需要重新登录才能继续使用。</p>
+            <div className="mt-5 flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setLogoutOpen(false)}>取消</Button>
+              <Button className="flex-1" onClick={handleLogout}>确认退出</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
