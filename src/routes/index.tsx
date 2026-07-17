@@ -86,23 +86,23 @@ const specialStepDescs = [
 const nodeStatusMap: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
   // Draft
   draft: { label: "草稿", className: "border-gray-200 bg-gray-50 text-gray-500", icon: <FileText className="h-3 w-3" /> },
-  // Regular recharge nodes (customer-facing)
-  pending_audit: { label: "米播审核", className: "border-blue-200 bg-blue-50 text-blue-700", icon: <Clock className="h-3 w-3" /> },
+  // Regular recharge nodes (customer-facing, active states use "中")
+  pending_audit: { label: "米播审核中", className: "border-blue-200 bg-blue-50 text-blue-700", icon: <Clock className="h-3 w-3" /> },
   audit_approved: { label: "米播审核中", className: "border-blue-200 bg-blue-50 text-blue-700", icon: <CheckCircle2 className="h-3 w-3" /> },
-  audit_rejected: { label: "审核未通过", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
-  finance_confirm: { label: "米播进行账户充值", className: "border-sky-200 bg-sky-50 text-sky-700", icon: <RefreshCw className="h-3 w-3" /> },
-  transferring: { label: "米播进行账户充值", className: "border-primary/30 bg-primary/10 text-primary", icon: <RefreshCw className="h-3 w-3" /> },
-  completed: { label: "充值完成", className: "border-emerald-200 bg-emerald-50 text-emerald-700", icon: <CheckCircle2 className="h-3 w-3" /> },
-  transfer_error: { label: "处理异常", className: "border-red-200 bg-red-50 text-red-700", icon: <ShieldAlert className="h-3 w-3" /> },
+  audit_rejected: { label: "已驳回", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
+  finance_confirm: { label: "米播进行账户充值中", className: "border-sky-200 bg-sky-50 text-sky-700", icon: <RefreshCw className="h-3 w-3" /> },
+  transferring: { label: "米播进行账户充值中", className: "border-primary/30 bg-primary/10 text-primary", icon: <RefreshCw className="h-3 w-3" /> },
+  completed: { label: "已完成", className: "border-emerald-200 bg-emerald-50 text-emerald-700", icon: <CheckCircle2 className="h-3 w-3" /> },
+  transfer_error: { label: "异常", className: "border-red-200 bg-red-50 text-red-700", icon: <ShieldAlert className="h-3 w-3" /> },
   // Special recharge nodes
-  sp_submitted: { label: "客户提交特批申请", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Clock className="h-3 w-3" /> },
-  sp_evaluating: { label: "米播评估", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Zap className="h-3 w-3" /> },
-  sp_approved: { label: "特批通过", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <CheckCircle2 className="h-3 w-3" /> },
-  sp_completed: { label: "充值完成", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <CheckCircle2 className="h-3 w-3" /> },
-  sp_payment_pending: { label: "待上传付款凭证", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Upload className="h-3 w-3" /> },
-  sp_payment_uploaded: { label: "待财务确认到账", className: "border-blue-200 bg-blue-50 text-blue-700", icon: <Clock className="h-3 w-3" /> },
-  sp_payment_rejected: { label: "付款凭证驳回", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
-  sp_rejected: { label: "特批未通过", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
+  sp_submitted: { label: "米播评估中", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Clock className="h-3 w-3" /> },
+  sp_evaluating: { label: "米播评估中", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Zap className="h-3 w-3" /> },
+  sp_approved: { label: "特批处理中", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <CheckCircle2 className="h-3 w-3" /> },
+  sp_completed: { label: "米播进行账户充值中", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <CheckCircle2 className="h-3 w-3" /> },
+  sp_payment_pending: { label: "客户上传付款凭证中", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Upload className="h-3 w-3" /> },
+  sp_payment_uploaded: { label: "付款凭证确认中", className: "border-blue-200 bg-blue-50 text-blue-700", icon: <Clock className="h-3 w-3" /> },
+  sp_payment_rejected: { label: "已驳回", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
+  sp_rejected: { label: "已驳回", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
 };
 
 interface Task {
@@ -262,9 +262,9 @@ const tasks: Task[] = [
   {
     id: "RC-2026-07005", account: "云岚达人合作", accountType: "品牌账户", accountId: "ST-10086105", subject: "上海云岚科技有限公司",
     amount: "¥40,000.00", payableAmount: "¥39,200.00", discount: "98 折",
-    node: "sp_completed", rechargeType: "special",
-    handler: "—", statusDescription: "特批充值已完成，等待客户按承诺时间付款并上传凭证",
-    step: 4, totalSteps: 5, time: "2026-07-08 18:30", purpose: "广告投放", orderCompleted: false,
+    node: "sp_payment_pending", rechargeType: "special",
+    handler: "—", statusDescription: "充值已完成，等待客户按承诺时间付款并上传凭证",
+    step: 5, totalSteps: 5, time: "2026-07-08 18:30", purpose: "广告投放", orderCompleted: false,
   },
 ];
 

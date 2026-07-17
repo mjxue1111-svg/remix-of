@@ -48,21 +48,21 @@ const specialStepDescs = [
 
 const nodeStatusMap: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
   draft: { label: "草稿", className: "border-gray-200 bg-gray-50 text-gray-500", icon: <FileText className="h-3 w-3" /> },
-  pending_audit: { label: "米播审核", className: "border-blue-200 bg-blue-50 text-blue-700", icon: <Clock className="h-3 w-3" /> },
+  pending_audit: { label: "米播审核中", className: "border-blue-200 bg-blue-50 text-blue-700", icon: <Clock className="h-3 w-3" /> },
   audit_approved: { label: "米播审核中", className: "border-blue-200 bg-blue-50 text-blue-700", icon: <CheckCircle2 className="h-3 w-3" /> },
-  audit_rejected: { label: "审核未通过", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
-  finance_confirm: { label: "米播进行账户充值", className: "border-sky-200 bg-sky-50 text-sky-700", icon: <RefreshCw className="h-3 w-3" /> },
-  transferring: { label: "米播进行账户充值", className: "border-primary/30 bg-primary/10 text-primary", icon: <RefreshCw className="h-3 w-3" /> },
-  completed: { label: "充值完成", className: "border-emerald-200 bg-emerald-50 text-emerald-700", icon: <CheckCircle2 className="h-3 w-3" /> },
-  transfer_error: { label: "处理异常", className: "border-red-200 bg-red-50 text-red-700", icon: <ShieldAlert className="h-3 w-3" /> },
-  sp_submitted: { label: "客户提交特批申请", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Clock className="h-3 w-3" /> },
-  sp_evaluating: { label: "米播评估", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Zap className="h-3 w-3" /> },
-  sp_approved: { label: "特批通过", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <CheckCircle2 className="h-3 w-3" /> },
-  sp_completed: { label: "充值完成", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <CheckCircle2 className="h-3 w-3" /> },
-  sp_payment_pending: { label: "待上传付款凭证", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Upload className="h-3 w-3" /> },
-  sp_payment_uploaded: { label: "待财务确认到账", className: "border-blue-200 bg-blue-50 text-blue-700", icon: <Clock className="h-3 w-3" /> },
-  sp_payment_rejected: { label: "付款凭证驳回", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
-  sp_rejected: { label: "特批未通过", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
+  audit_rejected: { label: "已驳回", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
+  finance_confirm: { label: "米播进行账户充值中", className: "border-sky-200 bg-sky-50 text-sky-700", icon: <RefreshCw className="h-3 w-3" /> },
+  transferring: { label: "米播进行账户充值中", className: "border-primary/30 bg-primary/10 text-primary", icon: <RefreshCw className="h-3 w-3" /> },
+  completed: { label: "已完成", className: "border-emerald-200 bg-emerald-50 text-emerald-700", icon: <CheckCircle2 className="h-3 w-3" /> },
+  transfer_error: { label: "异常", className: "border-red-200 bg-red-50 text-red-700", icon: <ShieldAlert className="h-3 w-3" /> },
+  sp_submitted: { label: "米播评估中", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Clock className="h-3 w-3" /> },
+  sp_evaluating: { label: "米播评估中", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Zap className="h-3 w-3" /> },
+  sp_approved: { label: "特批处理中", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <CheckCircle2 className="h-3 w-3" /> },
+  sp_completed: { label: "米播进行账户充值中", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <CheckCircle2 className="h-3 w-3" /> },
+  sp_payment_pending: { label: "客户上传付款凭证中", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Upload className="h-3 w-3" /> },
+  sp_payment_uploaded: { label: "付款凭证确认中", className: "border-blue-200 bg-blue-50 text-blue-700", icon: <Clock className="h-3 w-3" /> },
+  sp_payment_rejected: { label: "已驳回", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
+  sp_rejected: { label: "已驳回", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
 };
 
 const accountTypeClass: Record<string, string> = {
@@ -86,14 +86,14 @@ interface Task {
 const allTasks: Task[] = [
   // Regular recharge — various states
   { id: "RC-2026-07012", account: "云岚品牌中心", accountId: "ST-10086101", subject: "上海云岚科技有限公司", accountType: "主账户", amount: "¥200,000.00", payableAmount: "¥196,000.00", discount: "98 折", node: "pending_audit", rechargeType: "regular", step: 2, totalSteps: 4, time: "2026-07-15 14:20", purpose: "达人采买", paymentReceipt: "客户回单_20260715.pdf", paymentAmount: "¥196,000.00", paymentTime: "2026-07-15 14:20", paymentAccountName: "上海云岚科技有限公司", financeConfirmed: false, orderCompleted: false },
-  { id: "RC-2026-07011", account: "云岚效果投放", accountId: "ST-10086102", subject: "上海云岚科技有限公司", accountType: "投放账户", amount: "¥150,000.00", payableAmount: "¥147,000.00", discount: "98 折", node: "audit_approved", rechargeType: "regular", step: 2, totalSteps: 4, time: "2026-07-14 09:15", purpose: "广告投放", paymentReceipt: "客户回单_20260714.pdf", paymentAmount: "¥147,000.00", paymentTime: "2026-07-14 09:15", paymentAccountName: "上海云岚科技有限公司", financeConfirmed: false, orderCompleted: false },
+  { id: "RC-2026-07011", account: "云岚效果投放", accountId: "ST-10086102", subject: "上海云岚科技有限公司", accountType: "投放账户", amount: "¥150,000.00", payableAmount: "¥147,000.00", discount: "98 折", node: "finance_confirm", rechargeType: "regular", step: 3, totalSteps: 4, time: "2026-07-14 09:15", purpose: "广告投放", paymentReceipt: "客户回单_20260714.pdf", paymentAmount: "¥147,000.00", paymentTime: "2026-07-14 09:15", paymentAccountName: "上海云岚科技有限公司", financeConfirmed: false, orderCompleted: false },
   { id: "RC-2026-07010", account: "云岚内容增长", accountId: "ST-10086103", subject: "上海云岚科技有限公司", accountType: "运营账户", amount: "¥80,000.00", payableAmount: "¥78,400.00", discount: "98 折", node: "completed", rechargeType: "regular", step: 4, totalSteps: 4, time: "2026-07-13 16:30", purpose: "助推投流", paymentReceipt: "回单_20260713.pdf", financeConfirmed: true, orderCompleted: true },
   { id: "RC-2026-07009", account: "云岚品牌中心", accountId: "ST-10086101", subject: "上海云岚科技有限公司", accountType: "主账户", amount: "¥50,000.00", payableAmount: "¥49,000.00", discount: "98 折", node: "finance_confirm", rechargeType: "regular", step: 3, totalSteps: 4, time: "2026-07-12 10:45", purpose: "达人采买", paymentReceipt: "回单_20260712.pdf", financeConfirmed: true, orderCompleted: false },
   { id: "RC-2026-07008", account: "云岚品牌中心", accountId: "ST-10086101", subject: "上海云岚科技有限公司", accountType: "主账户", amount: "¥30,000.00", payableAmount: "¥29,400.00", discount: "98 折", node: "audit_rejected", rechargeType: "regular", step: 2, totalSteps: 4, time: "2026-07-12 08:00", purpose: "其他", paymentReceipt: "回单_20260712.pdf", orderCompleted: false },
   // Draft — regular
   { id: "RC-2026-07006", account: "云岚品牌中心", accountId: "ST-10086101", subject: "上海云岚科技有限公司", accountType: "主账户", isDraft: true, amount: "¥100,000.00", payableAmount: "¥98,000.00", discount: "98 折", node: "draft", rechargeType: "regular", step: 0, totalSteps: 4, time: "2026-07-15 18:30", purpose: "达人采买", orderCompleted: false },
   // Special recharge — various states
-  { id: "RC-2026-07005", account: "云岚达人合作", accountId: "ST-10086105", subject: "上海云岚科技有限公司", accountType: "品牌账户", amount: "¥40,000.00", payableAmount: "¥39,200.00", discount: "98 折", node: "sp_completed", rechargeType: "special", step: 4, totalSteps: 5, time: "2026-07-15 11:00", purpose: "广告投放", orderCompleted: false },
+  { id: "RC-2026-07005", account: "云岚达人合作", accountId: "ST-10086105", subject: "上海云岚科技有限公司", accountType: "品牌账户", amount: "¥40,000.00", payableAmount: "¥39,200.00", discount: "98 折", node: "sp_payment_pending", rechargeType: "special", step: 5, totalSteps: 5, time: "2026-07-15 11:00", purpose: "广告投放", orderCompleted: false },
   { id: "RC-2026-07004", account: "云岚新品推广", accountId: "ST-10086104", subject: "上海云岚科技有限公司", accountType: "投放账户", amount: "¥80,000.00", payableAmount: "¥78,400.00", discount: "98 折", node: "sp_payment_uploaded", rechargeType: "special", step: 5, totalSteps: 5, time: "2026-07-14 15:00", purpose: "达人采买", paymentReceipt: "特批付款回单_20260714.pdf", financeConfirmed: false, orderCompleted: false },
   { id: "RC-2026-07003", account: "云岚内容增长", accountId: "ST-10086103", subject: "上海云岚科技有限公司", accountType: "运营账户", amount: "¥120,000.00", payableAmount: "¥117,600.00", discount: "98 折", node: "sp_evaluating", rechargeType: "special", step: 2, totalSteps: 5, time: "2026-07-14 10:30", purpose: "助推投流", orderCompleted: false },
   { id: "RC-2026-07002", account: "云岚效果投放", accountId: "ST-10086102", subject: "上海云岚科技有限公司", accountType: "投放账户", amount: "¥60,000.00", payableAmount: "¥58,800.00", discount: "98 折", node: "sp_payment_rejected", rechargeType: "special", step: 5, totalSteps: 5, time: "2026-07-13 14:00", purpose: "广告投放", paymentReceipt: "特批回单_20260713.pdf", paymentStatus: "error", financeConfirmed: false, orderCompleted: false },
