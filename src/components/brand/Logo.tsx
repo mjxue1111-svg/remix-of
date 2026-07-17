@@ -1,4 +1,3 @@
-import logoAsset from "@/assets/mixianyun-logo.png.asset.json";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
@@ -12,7 +11,7 @@ export function Logo({ size = 32, showWordmark = true, className, tone = "defaul
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
       <img
-        src={logoAsset.url}
+        src="/mixianyun-logo.png"
         alt="米线云"
         style={{ width: size, height: size }}
         className="object-contain"

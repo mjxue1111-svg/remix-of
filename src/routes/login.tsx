@@ -65,27 +65,27 @@ function LoginPage() {
   }, [navigate]);
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-portal px-4 py-12">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-portal px-4 py-10">
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-32 top-10 h-[420px] w-[420px] rounded-full bg-gradient-brand-soft blur-3xl animate-drift-1"
+        className="pointer-events-none absolute -left-32 top-10 h-[380px] w-[380px] rounded-full bg-gradient-brand-soft blur-3xl animate-drift-1"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-40 bottom-0 h-[480px] w-[480px] rounded-full bg-gradient-brand-soft blur-3xl animate-drift-2"
+        className="pointer-events-none absolute -right-40 bottom-0 h-[420px] w-[420px] rounded-full bg-gradient-brand-soft blur-3xl animate-drift-2"
       />
 
-      <div className="relative z-10 w-full max-w-md">
-        <div className="mb-8 flex justify-center">
-          <Logo size={36} />
+      <div className="relative z-10 w-full max-w-[420px]">
+        <div className="mb-5 flex justify-center">
+          <Logo size={40} />
         </div>
 
-        <div className="rounded-2xl border border-border bg-card/80 p-7 shadow-card-soft backdrop-blur-xl">
-          <div className="mb-6 text-center">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+        <div className="rounded-3xl border border-border/60 bg-white/90 p-6 shadow-card-soft backdrop-blur-xl">
+          <div className="mb-5 text-center">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">
               欢迎进入米线云
             </h1>
-            <p className="mt-1.5 text-sm text-muted-foreground">充值协同服务平台</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">充值协同服务平台</p>
           </div>
 
           {activeTab === "forgot" ? (
@@ -99,11 +99,21 @@ function LoginPage() {
             />
           ) : (
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as AuthTab)}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">登录</TabsTrigger>
-                <TabsTrigger value="register">注册</TabsTrigger>
+              <TabsList className="grid h-9 w-full grid-cols-2 rounded-lg bg-muted p-1">
+                <TabsTrigger
+                  value="login"
+                  className="rounded-md text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                >
+                  登录
+                </TabsTrigger>
+                <TabsTrigger
+                  value="register"
+                  className="rounded-md text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                >
+                  注册
+                </TabsTrigger>
               </TabsList>
-              <TabsContent value="login" className="mt-6">
+              <TabsContent value="login" className="mt-5">
                 <LoginForm
                   prefillPhone={loginPrefillPhone}
                   onForgot={(phone) => {
@@ -113,14 +123,14 @@ function LoginPage() {
                   onGoRegister={() => setActiveTab("register")}
                 />
               </TabsContent>
-              <TabsContent value="register" className="mt-6">
+              <TabsContent value="register" className="mt-5">
                 <RegisterForm onDone={() => setActiveTab("login")} />
               </TabsContent>
             </Tabs>
           )}
         </div>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
+        <p className="mt-5 text-center text-[11px] text-muted-foreground/80">
           继续即表示您同意米线云服务条款与隐私政策
         </p>
       </div>
@@ -141,7 +151,7 @@ function IdentityPicker({
 }) {
   return (
     <div>
-      <Label className="mb-2 block text-xs text-muted-foreground">{label}</Label>
+      <Label className="mb-1.5 block text-xs text-muted-foreground">{label}</Label>
       <div className="grid grid-cols-2 gap-2">
         {IDENTITIES.map((i) => {
           const Icon = IDENTITY_ICON[i];
@@ -152,10 +162,10 @@ function IdentityPicker({
               type="button"
               onClick={() => onChange(i)}
               className={cn(
-                "flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2.5 text-sm transition",
+                "flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-sm transition",
                 active
-                  ? "border-primary bg-primary/5 text-primary shadow-brand"
-                  : "border-border bg-card text-muted-foreground hover:border-primary/40",
+                  ? "border-primary/70 bg-primary/5 text-primary"
+                  : "border-border bg-white text-muted-foreground hover:border-primary/40 hover:bg-muted/50",
               )}
             >
               <Icon className="h-4 w-4" />
@@ -250,56 +260,71 @@ function LoginForm({
 
   return (
     <>
-      <div className="space-y-5">
+      <div className="space-y-4">
         <IdentityPicker value={identity} onChange={setLocalIdentity} label="选择身份进入" />
 
-        <div className="flex rounded-md border border-input p-0.5 text-sm">
+        <div className="flex h-9 rounded-lg border border-input bg-background p-0.5 text-sm">
           <button
             type="button"
             onClick={() => setLoginMode("password")}
-            className={`flex-1 rounded py-1.5 transition ${loginMode === "password" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+            className={cn(
+              "flex-1 rounded-md py-1 text-xs font-medium transition",
+              loginMode === "password"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
           >
             密码登录
           </button>
           <button
             type="button"
             onClick={() => setLoginMode("otp")}
-            className={`flex-1 rounded py-1.5 transition ${loginMode === "otp" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+            className={cn(
+              "flex-1 rounded-md py-1 text-xs font-medium transition",
+              loginMode === "otp"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
           >
             验证码登录
           </button>
         </div>
 
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="phone">手机号</Label>
-            <div className="flex items-center rounded-md border border-input bg-background focus-within:border-primary">
-              <span className="pl-3 pr-2 text-sm text-muted-foreground">+86</span>
+        <div className="space-y-3.5">
+          <div className="space-y-1">
+            <Label htmlFor="phone" className="text-xs">
+              手机号
+            </Label>
+            <div className="flex h-10 items-center rounded-lg border border-input bg-background px-3 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
+              <span className="pr-2 text-sm text-muted-foreground">+86</span>
               <Input
                 id="phone"
                 type="tel"
                 placeholder="请输入手机号"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="border-0 shadow-none focus-visible:ring-0"
+                className="h-full border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
               />
             </div>
           </div>
 
           {loginMode === "password" ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="phone-pw">密码</Label>
+            <div className="space-y-1">
+              <Label htmlFor="phone-pw" className="text-xs">
+                密码
+              </Label>
               <Input
                 id="phone-pw"
                 type="password"
                 placeholder="请输入密码"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="h-10 rounded-lg text-sm"
               />
             </div>
           ) : (
-            <div className="space-y-1.5">
-              <Label>短信验证码</Label>
+            <div className="space-y-1">
+              <Label className="text-xs">短信验证码</Label>
               <div className="flex gap-2">
                 <Input
                   value={otp}
@@ -307,13 +332,14 @@ function LoginForm({
                   placeholder="请输入短信验证码"
                   maxLength={6}
                   disabled={!otpSent}
+                  className="h-10 rounded-lg text-sm"
                 />
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleSendOtp}
                   disabled={countdown > 0}
-                  className="shrink-0"
+                  className="h-10 shrink-0 rounded-lg px-3 text-xs font-medium"
                 >
                   {countdown > 0 ? `${countdown}s` : otpSent ? "重新发送" : "获取验证码"}
                 </Button>
@@ -321,9 +347,9 @@ function LoginForm({
             </div>
           )}
 
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center justify-between text-[11px]">
             <span className="text-muted-foreground">
-              测试账号: {PRESET_ACCOUNTS[identity].phone} / {PRESET_ACCOUNTS[identity].password}
+              测试: {PRESET_ACCOUNTS[identity].phone} / {PRESET_ACCOUNTS[identity].password}
             </span>
             {loginMode === "password" && (
               <button
@@ -337,12 +363,21 @@ function LoginForm({
           </div>
 
           <Button
-            className="w-full bg-gradient-brand text-primary-foreground shadow-brand"
+            className="h-10 w-full rounded-xl bg-gradient-brand text-sm font-medium text-primary-foreground shadow-brand hover:brightness-105"
             onClick={handleLogin}
             disabled={loading}
           >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             登录
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onGoRegister}
+            className="h-10 w-full rounded-xl border-primary/30 text-sm font-medium text-primary hover:bg-primary/5 hover:text-primary"
+          >
+            没有账号？ 点击免费试用
           </Button>
         </div>
       </div>
@@ -442,48 +477,50 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <IdentityPicker value={identity} onChange={setIdentity} label="选择注册身份" />
 
-      <div className="space-y-4">
+      <div className="space-y-3.5">
         {/* Company / Agent name */}
-        <div className="space-y-1.5">
-          <Label>{identity === "client" ? "企业名称" : "代理商名称"}</Label>
+        <div className="space-y-1">
+          <Label className="text-xs">{identity === "client" ? "企业名称" : "代理商名称"}</Label>
           <Input
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
             placeholder={identity === "client" ? "请输入企业全称" : "请输入代理商名称"}
+            className="h-10 rounded-lg text-sm"
           />
         </div>
 
         {/* Contact name */}
-        <div className="space-y-1.5">
-          <Label>联系人姓名</Label>
+        <div className="space-y-1">
+          <Label className="text-xs">联系人姓名</Label>
           <Input
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             placeholder="您的姓名"
+            className="h-10 rounded-lg text-sm"
           />
         </div>
 
         {/* Phone */}
-        <div className="space-y-1.5">
-          <Label>手机号</Label>
-          <div className="flex items-center rounded-md border border-input bg-background focus-within:border-primary">
-            <span className="pl-3 pr-2 text-sm text-muted-foreground">+86</span>
+        <div className="space-y-1">
+          <Label className="text-xs">手机号</Label>
+          <div className="flex h-10 items-center rounded-lg border border-input bg-background px-3 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
+            <span className="pr-2 text-sm text-muted-foreground">+86</span>
             <Input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="请输入手机号"
-              className="border-0 shadow-none focus-visible:ring-0"
+              className="h-full border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
             />
           </div>
         </div>
 
         {/* SMS OTP */}
-        <div className="space-y-1.5">
-          <Label>短信验证码</Label>
+        <div className="space-y-1">
+          <Label className="text-xs">短信验证码</Label>
           <div className="flex gap-2">
             <Input
               value={otp}
@@ -491,13 +528,14 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
               placeholder="请输入短信验证码"
               maxLength={6}
               disabled={!otpSent}
+              className="h-10 rounded-lg text-sm"
             />
             <Button
               type="button"
               variant="outline"
               onClick={handleSendOtp}
               disabled={loading || !phone || countdown > 0}
-              className="shrink-0"
+              className="h-10 shrink-0 rounded-lg px-3 text-xs font-medium"
             >
               {countdown > 0 ? `${countdown}s` : otpSent ? "重新发送" : "获取验证码"}
             </Button>
@@ -505,18 +543,19 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
         </div>
 
         {/* Set password */}
-        <div className="space-y-1.5">
-          <Label>设置密码</Label>
+        <div className="space-y-1">
+          <Label className="text-xs">设置密码</Label>
           <Input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="请设置登录密码 (至少 4 位)"
+            className="h-10 rounded-lg text-sm"
           />
         </div>
 
         <Button
-          className="w-full bg-gradient-brand text-primary-foreground shadow-brand"
+          className="h-10 w-full rounded-xl bg-gradient-brand text-sm font-medium text-primary-foreground shadow-brand hover:brightness-105"
           onClick={handleRegister}
           disabled={loading}
         >
@@ -525,7 +564,7 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
         </Button>
       </div>
 
-      <p className="text-center text-xs text-muted-foreground">
+      <p className="text-center text-[11px] text-muted-foreground">
         已有账号?{" "}
         <button
           type="button"
@@ -591,76 +630,81 @@ function ForgotPasswordForm({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">找回密码</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <h2 className="text-base font-semibold text-foreground">找回密码</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
           通过手机号 + 短信验证码重置您的登录密码
         </p>
       </div>
 
-      <div className="space-y-1.5">
-        <Label>手机号</Label>
-        <div className="flex items-center rounded-md border border-input bg-background focus-within:border-primary">
-          <span className="pl-3 pr-2 text-sm text-muted-foreground">+86</span>
+      <div className="space-y-3.5">
+        <div className="space-y-1">
+          <Label className="text-xs">手机号</Label>
+          <div className="flex h-10 items-center rounded-lg border border-input bg-background px-3 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
+            <span className="pr-2 text-sm text-muted-foreground">+86</span>
+            <Input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="请输入手机号"
+              className="h-full border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <Label className="text-xs">短信验证码</Label>
+          <div className="flex gap-2">
+            <Input
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              placeholder="请输入短信验证码"
+              maxLength={6}
+              disabled={!otpSent}
+              className="h-10 rounded-lg text-sm"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSendOtp}
+              disabled={loading || !phone || countdown > 0}
+              className="h-10 shrink-0 rounded-lg px-3 text-xs font-medium"
+            >
+              {countdown > 0 ? `${countdown}s` : otpSent ? "重新发送" : "获取验证码"}
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <Label className="text-xs">新密码</Label>
           <Input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="请输入手机号"
-            className="border-0 shadow-none focus-visible:ring-0"
+            type="password"
+            value={newPw}
+            onChange={(e) => setNewPw(e.target.value)}
+            placeholder="请输入新密码"
+            className="h-10 rounded-lg text-sm"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <Label className="text-xs">确认新密码</Label>
+          <Input
+            type="password"
+            value={confirmPw}
+            onChange={(e) => setConfirmPw(e.target.value)}
+            placeholder="请再次输入新密码"
+            className="h-10 rounded-lg text-sm"
           />
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <Label>短信验证码</Label>
-        <div className="flex gap-2">
-          <Input
-            value={otp}
-            onChange={(e) => setOtp(e.target.value)}
-            placeholder="请输入短信验证码"
-            maxLength={6}
-            disabled={!otpSent}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleSendOtp}
-            disabled={loading || !phone || countdown > 0}
-            className="shrink-0"
-          >
-            {countdown > 0 ? `${countdown}s` : otpSent ? "重新发送" : "获取验证码"}
-          </Button>
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label>新密码</Label>
-        <Input
-          type="password"
-          value={newPw}
-          onChange={(e) => setNewPw(e.target.value)}
-          placeholder="请输入新密码"
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label>确认新密码</Label>
-        <Input
-          type="password"
-          value={confirmPw}
-          onChange={(e) => setConfirmPw(e.target.value)}
-          placeholder="请再次输入新密码"
-        />
-      </div>
-
-      <div className="flex gap-2">
-        <Button type="button" variant="outline" onClick={onBack} className="flex-1">
+      <div className="flex gap-2 pt-1">
+        <Button type="button" variant="outline" onClick={onBack} className="h-10 flex-1 rounded-xl text-sm">
           返回登录
         </Button>
         <Button
-          className="flex-1 bg-gradient-brand text-primary-foreground shadow-brand"
+          className="h-10 flex-1 rounded-xl bg-gradient-brand text-sm font-medium text-primary-foreground shadow-brand hover:brightness-105"
           onClick={handleSubmit}
           disabled={loading}
         >
