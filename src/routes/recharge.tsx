@@ -89,7 +89,7 @@ const allTasks: Task[] = [
   { id: "RC-2026-07011", account: "云岚效果投放", accountId: "ST-10086102", subject: "上海云岚科技有限公司", accountType: "投放账户", amount: "¥150,000.00", payableAmount: "¥147,000.00", discount: "98 折", node: "finance_confirm", rechargeType: "regular", step: 3, totalSteps: 4, time: "2026-07-14 09:15", purpose: "广告投放", paymentReceipt: "客户回单_20260714.pdf", paymentAmount: "¥147,000.00", paymentTime: "2026-07-14 09:15", paymentAccountName: "上海云岚科技有限公司", financeConfirmed: false, orderCompleted: false },
   { id: "RC-2026-07010", account: "云岚内容增长", accountId: "ST-10086103", subject: "上海云岚科技有限公司", accountType: "运营账户", amount: "¥80,000.00", payableAmount: "¥78,400.00", discount: "98 折", node: "completed", rechargeType: "regular", step: 4, totalSteps: 4, time: "2026-07-13 16:30", purpose: "助推投流", paymentReceipt: "回单_20260713.pdf", financeConfirmed: true, orderCompleted: true },
   { id: "RC-2026-07009", account: "云岚品牌中心", accountId: "ST-10086101", subject: "上海云岚科技有限公司", accountType: "主账户", amount: "¥50,000.00", payableAmount: "¥49,000.00", discount: "98 折", node: "finance_confirm", rechargeType: "regular", step: 3, totalSteps: 4, time: "2026-07-12 10:45", purpose: "达人采买", paymentReceipt: "回单_20260712.pdf", financeConfirmed: true, orderCompleted: false },
-  { id: "RC-2026-07008", account: "云岚品牌中心", accountId: "ST-10086101", subject: "上海云岚科技有限公司", accountType: "主账户", amount: "¥30,000.00", payableAmount: "¥29,400.00", discount: "98 折", node: "audit_rejected", rechargeType: "regular", step: 2, totalSteps: 4, time: "2026-07-12 08:00", purpose: "其他", paymentReceipt: "回单_20260712.pdf", orderCompleted: false },
+  { id: "RC-2026-07008", account: "云岚品牌中心", accountId: "ST-10086101", subject: "上海云岚科技有限公司", accountType: "主账户", amount: "¥30,000.00", payableAmount: "¥29,400.00", discount: "98 折", node: "audit_rejected", rechargeType: "regular", step: 2, totalSteps: 4, time: "2026-07-12 08:00", purpose: "其他", paymentReceipt: "回单_20260712.pdf", orderCompleted: false, paymentAmount: "¥29,400.00", paymentTime: "2026-07-12 08:00", paymentAccountName: "上海云岚科技有限公司", financeConfirmed: false },
   // Draft — regular
   { id: "RC-2026-07006", account: "云岚品牌中心", accountId: "ST-10086101", subject: "上海云岚科技有限公司", accountType: "主账户", isDraft: true, amount: "¥100,000.00", payableAmount: "¥98,000.00", discount: "98 折", node: "draft", rechargeType: "regular", step: 0, totalSteps: 4, time: "2026-07-15 18:30", purpose: "达人采买", orderCompleted: false },
   // Special recharge — various states
@@ -338,6 +338,7 @@ function RechargePage() {
             <SelectItem value="达人采买">达人采买</SelectItem>
             <SelectItem value="广告投放">广告投放</SelectItem>
             <SelectItem value="助推投流">助推投流</SelectItem>
+            <SelectItem value="其他">其他</SelectItem>
           </SelectContent>
         </Select>
         <Button size="sm" className="h-9 gap-1.5" onClick={() => setCurrentPage(1)}><Search className="h-3.5 w-3.5" />查询</Button>
