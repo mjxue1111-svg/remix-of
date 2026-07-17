@@ -324,7 +324,7 @@ function FormStep({ onSuccess, onClose, onSaveDraft }: { onSuccess: (rechargeId:
       </div>
 
       {/* ── Body ───────────────────────────────────────────── */}
-      <div className="space-y-6 px-8 py-6">
+      <div className="flex-1 overflow-y-auto px-8 py-6"><div className="space-y-6">
 
         {/* ═══ Section 0: Recharge Mode ═══ */}
         <section className="space-y-3">
@@ -585,7 +585,7 @@ function FormStep({ onSuccess, onClose, onSaveDraft }: { onSuccess: (rechargeId:
           </div>
         </section>
 
-      </div>
+      </div></div>
 
       {/* ── Footer ─────────────────────────────────────────── */}
       <div className="border-t border-border px-8 py-5">
@@ -718,7 +718,7 @@ export function RechargeModal({ open, onOpenChange }: RechargeModalProps) {
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={handleClose} />
-      <div className="relative z-10 w-full max-w-[720px] max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl" role="dialog" aria-modal="true">
+      <div className="relative z-10 flex w-full max-w-[720px] max-h-[90vh] flex-col rounded-2xl border border-border bg-card shadow-2xl" role="dialog" aria-modal="true">
         {step === "form" ? (
           <FormStep onSuccess={handleSuccess} onClose={handleClose} onSaveDraft={handleSaveDraft} />
         ) : step === "draft" ? (

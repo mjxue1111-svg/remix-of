@@ -125,7 +125,7 @@ function FormStep({
       </div>
 
       {/* ── Body ───────────────────────────────────────────── */}
-      <div className="space-y-6 px-8 py-6">
+      <div className="flex-1 overflow-y-auto px-8 py-6"><div className="space-y-6">
         {/* ══════════════════════════════════════════════════
             Section 1: Account Basic Info
             ══════════════════════════════════════════════════ */}
@@ -350,7 +350,7 @@ function FormStep({
             </div>
           </div>
         </section>
-      </div>
+      </div></div>
 
       {/* ── Footer ─────────────────────────────────────────── */}
       <div className="border-t border-border px-8 py-5">
@@ -500,7 +500,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
       />
 
       <div
-        className="relative z-10 w-full max-w-[720px] max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl"
+        className="relative z-10 flex w-full max-w-[720px] max-h-[90vh] flex-col rounded-2xl border border-border bg-card shadow-2xl"
         role="dialog"
         aria-modal="true"
       >
