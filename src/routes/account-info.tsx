@@ -40,41 +40,63 @@ const statusConfig: Record<string, string> = {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function InfoItem({
-  label,
-  value,
-  mono,
-  span,
-}: {
+// Row of a 4-column descriptor grid: label | value | label | value.
+// Column widths locked to 15% / 35% / 15% / 35% via colgroup on the wrapping <table>.
+type Cell = {
   label: string;
-  value: string | React.ReactNode;
+  value: React.ReactNode;
   mono?: boolean;
-  span?: 1 | 2 | 3 | 4;
-}) {
-  const spanClass =
-    span === 2 ? "sm:col-span-2" : span === 3 ? "sm:col-span-3" : span === 4 ? "sm:col-span-4" : "";
+  colSpan?: 1 | 3; // 3 = value spans across the remaining label+value columns
+};
+
+function DescTable({ rows }: { rows: Cell[][] }) {
   return (
-    <div className={`min-w-0 space-y-1 ${spanClass}`}>
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`text-sm font-medium text-foreground break-words ${mono ? "font-mono" : ""}`}>
-        {value}
-      </div>
+    <div className="w-full overflow-hidden rounded-lg border border-border/60">
+      <table className="w-full table-fixed border-collapse text-sm">
+        <colgroup>
+          <col style={{ width: "15%" }} />
+          <col style={{ width: "35%" }} />
+          <col style={{ width: "15%" }} />
+          <col style={{ width: "35%" }} />
+        </colgroup>
+        <tbody>
+          {rows.map((row, ri) => (
+            <tr key={ri} className="border-b border-border/60 last:border-0">
+              {row.map((cell, ci) => (
+                <>
+                  <th
+                    key={`${ri}-${ci}-l`}
+                    className="border-r border-border/60 bg-muted/40 px-4 py-3 text-left align-middle text-xs font-normal text-muted-foreground"
+                  >
+                    {cell.label}
+                  </th>
+                  <td
+                    key={`${ri}-${ci}-v`}
+                    colSpan={cell.colSpan === 3 ? 3 : 1}
+                    className={`border-r border-border/60 bg-background px-4 py-3 align-middle text-sm font-medium text-foreground last:border-r-0 ${cell.mono ? "font-mono" : ""}`}
+                  >
+                    {cell.value}
+                  </td>
+                </>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-function InfoGroup({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <span className="h-4 w-1 rounded-full bg-primary" />
-        <h4 className="text-sm font-semibold text-foreground">{title}</h4>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4">{children}</div>
+    <div className="mb-3 flex items-center gap-2">
+      <span className="h-4 w-1 rounded-full bg-primary" />
+      <h4 className="text-sm font-semibold text-foreground">{children}</h4>
     </div>
   );
 }
 
+// Kept for the account-detail drawer at the bottom of this file.
 function InfoCell({ label, value, mono }: { label: string; value: string | React.ReactNode; mono?: boolean }) {
   return (
     <div className="flex items-center border-b border-border/30 last:border-0">
@@ -121,33 +143,59 @@ function AccountInfoPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <InfoGroup title="基本信息">
-            <InfoItem label="企业名称" value="上海云岚科技有限公司" span={2} />
-            <InfoItem label="企业简称" value="云岚科技" />
-            <InfoItem
-              label="企业状态"
-              value={
-                <Badge className="gap-1 border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
-                  <CheckCircle2 className="h-3 w-3" />在营（开业）
-                </Badge>
-              }
+          <div>
+            <SectionTitle>基本信息</SectionTitle>
+            <DescTable
+              rows={[
+                [
+                  { label: "企业名称", value: "上海云岚科技有限公司" },
+                  { label: "企业简称", value: "云岚科技" },
+                ],
+                [
+                  { label: "英文名称", value: "Shanghai Yunlan Technology Co., Ltd." },
+                  { label: "统一社会信用代码", value: "91310115MACJ6K1C8A", mono: true },
+                ],
+                [
+                  { label: "注册号", value: "310115004861028", mono: true },
+                  { label: "组织机构代码", value: "MACJ6K1C-8", mono: true },
+                ],
+                [
+                  { label: "纳税人识别号", value: "91310115MACJ6K1C8A", mono: true },
+                  {
+                    label: "企业状态",
+                    value: (
+                      <Badge className="gap-1 border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
+                        <CheckCircle2 className="h-3 w-3" />在营（开业）
+                      </Badge>
+                    ),
+                  },
+                ],
+              ]}
             />
-            <InfoItem label="英文名称" value="Shanghai Yunlan Technology Co., Ltd." span={2} />
-            <InfoItem label="统一社会信用代码" value="91310115MACJ6K1C8A" mono span={2} />
-            <InfoItem label="注册号" value="310115004861028" mono />
-            <InfoItem label="组织机构代码" value="MACJ6K1C-8" mono />
-            <InfoItem label="纳税人识别号" value="91310115MACJ6K1C8A" mono span={2} />
-          </InfoGroup>
-          <div className="h-px w-full bg-border/60" />
-          <InfoGroup title="发票 / 支票信息">
-            <InfoItem label="发票抬头" value="上海云岚科技有限公司" span={2} />
-            <InfoItem label="纳税人类型" value="增值税一般纳税人" />
-            <InfoItem label="发票类型" value="增值税专用发票" />
-            <InfoItem label="开户银行" value="招商银行股份有限公司上海张江支行" span={2} />
-            <InfoItem label="银行账户" value="6225 **** **** 0001" mono />
-            <InfoItem label="开票电话" value="021-58886666" />
-            <InfoItem label="开票地址" value="上海市浦东新区张江高科技园区科苑路 88 号" span={4} />
-          </InfoGroup>
+          </div>
+          <div>
+            <SectionTitle>发票 / 支票信息</SectionTitle>
+            <DescTable
+              rows={[
+                [
+                  { label: "发票抬头", value: "上海云岚科技有限公司" },
+                  { label: "纳税人类型", value: "增值税一般纳税人" },
+                ],
+                [
+                  { label: "发票类型", value: "增值税专用发票" },
+                  { label: "开户银行", value: "招商银行股份有限公司上海张江支行" },
+                ],
+                [
+                  { label: "银行账户", value: "6225 **** **** 0001", mono: true },
+                  { label: "开票电话", value: "021-58886666" },
+                ],
+                [
+                  { label: "开票地址", value: "上海市浦东新区张江高科技园区科苑路 88 号" },
+                  { label: "备注", value: "默认开票信息" },
+                ],
+              ]}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -167,14 +215,22 @@ function AccountInfoPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4 w-full">
-            <InfoItem label="登录账号" value="yunlan_admin" mono />
-            <InfoItem label="绑定手机号" value="173****451" />
-            <InfoItem label="登录邮箱" value="shu****.yan@yunlan.com" />
-            <InfoItem label="当前账号角色" value="客户管理员" />
-            <InfoItem label="最近登录时间" value="2026-07-15 14:32" />
-            <InfoItem label="密码" value="********" />
-          </div>
+          <DescTable
+            rows={[
+              [
+                { label: "登录账号", value: "yunlan_admin", mono: true },
+                { label: "当前账号角色", value: "客户管理员" },
+              ],
+              [
+                { label: "绑定手机号", value: "173****451" },
+                { label: "最近登录时间", value: "2026-07-15 14:32" },
+              ],
+              [
+                { label: "登录邮箱", value: "shu****.yan@yunlan.com" },
+                { label: "密码", value: "********", mono: true },
+              ],
+            ]}
+          />
         </CardContent>
       </Card>
 
