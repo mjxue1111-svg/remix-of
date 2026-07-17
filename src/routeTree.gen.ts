@@ -14,6 +14,7 @@ import { Route as StartRouteImport } from './routes/start'
 import { Route as RechargeRouteImport } from './routes/recharge'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as AccountInfoRouteImport } from './routes/account-info'
 import { Route as IndexRouteImport } from './routes/index'
 
 const TransactionLedgerRoute = TransactionLedgerRouteImport.update({
@@ -41,6 +42,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountInfoRoute = AccountInfoRouteImport.update({
+  id: '/account-info',
+  path: '/account-info',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -49,6 +55,7 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account-info': typeof AccountInfoRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/recharge': typeof RechargeRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account-info': typeof AccountInfoRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/recharge': typeof RechargeRoute
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account-info': typeof AccountInfoRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/recharge': typeof RechargeRoute
@@ -76,6 +85,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account-info'
     | '/dashboard'
     | '/login'
     | '/recharge'
@@ -84,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account-info'
     | '/dashboard'
     | '/login'
     | '/recharge'
@@ -92,6 +103,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/account-info'
     | '/dashboard'
     | '/login'
     | '/recharge'
@@ -101,6 +113,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountInfoRoute: typeof AccountInfoRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   RechargeRoute: typeof RechargeRoute
@@ -145,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/account-info': {
+      id: '/account-info'
+      path: '/account-info'
+      fullPath: '/account-info'
+      preLoaderRoute: typeof AccountInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -157,6 +177,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountInfoRoute: AccountInfoRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   RechargeRoute: RechargeRoute,
@@ -166,3 +187,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
