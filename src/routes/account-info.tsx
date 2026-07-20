@@ -2,16 +2,19 @@ import { Fragment, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Building2, User, Shield, Plus, CheckCircle2, Eye, Pencil, Lock,
+  AlertTriangle, Clock, XCircle, FileText, ChevronRight, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { AddAccountModal } from "@/components/AddAccountModal";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/account-info")({ component: AccountInfoPage });
 
@@ -38,15 +41,37 @@ const statusConfig: Record<string, string> = {
   "授权即将过期": "border-yellow-200 bg-yellow-50 text-yellow-700",
 };
 
+// ── Types ──────────────────────────────────────────────────────────────────
+
+type ModificationStatus = "pending_review" | "approved" | "rejected" | "cancelled";
+
+interface ModificationRequest {
+  id: string;
+  status: ModificationStatus;
+  newPhone: string;
+  contactName: string;
+  contactPhone: string;
+  contactEmail: string;
+  reason: string;
+  submittedAt: string;
+  rejectReason?: string;
+  reviewedAt?: string;
+}
+
+const modificationStatusConfig: Record<ModificationStatus, { label: string; className: string; icon: React.ReactNode }> = {
+  pending_review: { label: "待米播审核", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Clock className="h-3 w-3" /> },
+  approved: { label: "审核通过", className: "border-emerald-200 bg-emerald-50 text-emerald-700", icon: <CheckCircle2 className="h-3 w-3" /> },
+  rejected: { label: "审核驳回", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
+  cancelled: { label: "已取消", className: "border-gray-200 bg-gray-50 text-gray-500", icon: <X className="h-3 w-3" /> },
+};
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-// Row of a 4-column descriptor grid: label | value | label | value.
-// Column widths locked to 15% / 35% / 15% / 35% via colgroup on the wrapping <table>.
 type Cell = {
   label: string;
   value: React.ReactNode;
   mono?: boolean;
-  colSpan?: 1 | 3; // 3 = value spans across the remaining label+value columns
+  colSpan?: 1 | 3;
 };
 
 function DescTable({ rows }: { rows: Cell[][] }) {
@@ -92,7 +117,6 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Kept for the account-detail drawer at the bottom of this file.
 function InfoCell({ label, value, mono }: { label: string; value: string | React.ReactNode; mono?: boolean }) {
   return (
     <div className="flex items-center border-b border-border/30 last:border-0">
@@ -106,9 +130,36 @@ function InfoCell({ label, value, mono }: { label: string; value: string | React
 
 function AccountInfoPage() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [editContactOpen, setEditContactOpen] = useState(false);
   const [changePwdOpen, setChangePwdOpen] = useState(false);
   const [addAccountOpen, setAddAccountOpen] = useState(false);
   const [detailAccount, setDetailAccount] = useState<typeof starAccounts[0] | null>(null);
+  const [auditDetailOpen, setAuditDetailOpen] = useState(false);
+
+  // User profile data
+  const [contactData, setContactData] = useState({
+    loginAccount: "173****451",
+    maskedPhone: "173****451",
+    phone: "17388884451",
+    contactName: "李明",
+    contactPhone: "17388884451",
+    contactEmail: "shu.yan@yunlan.com",
+    maskedEmail: "shu****.yan@yunlan.com",
+    role: "客户管理员",
+    status: "正常",
+    lastLoginTime: "2026-07-15 14:32",
+  });
+
+  // Modification request
+  const [modificationRequest, setModificationRequest] = useState<ModificationRequest | null>(null);
+
+  // Mask phone helper
+  const maskPhone = (phone: string) => {
+    if (phone.length < 7) return phone;
+    return phone.slice(0, 3) + "****" + phone.slice(-3);
+  };
+
+  const hasPendingRequest = modificationRequest !== null && modificationRequest.status === "pending_review";
 
   return (
     <div className="w-full space-y-5 p-6">
@@ -195,35 +246,108 @@ function AccountInfoPage() {
         </CardContent>
       </Card>
 
-      {/* ── Module 2: Login Account Info ─────────────────── */}
+      {/* ── Module 2: Account & Contact Info ─────────────── */}
       <Card className="border-border/60 shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <User className="h-4 w-4 text-primary" />登录账号信息
+                <User className="h-4 w-4 text-primary" />账号与联系人信息
               </CardTitle>
-              <CardDescription>该信息用于登录米播充值平台客户端。</CardDescription>
+              <CardDescription>
+                该信息用于登录米播充值平台客户端、接收充值流程通知及账号安全验证。绑定手机号修改后需提交米播审核，审核通过后生效。
+              </CardDescription>
             </div>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setChangePwdOpen(true)}>
-              <Lock className="h-3.5 w-3.5" />修改密码
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  if (hasPendingRequest) {
+                    toast.error("当前存在待审核的修改申请，请等待审核完成后再提交新的申请。");
+                    return;
+                  }
+                  setEditContactOpen(true);
+                }}
+              >
+                <Pencil className="h-3.5 w-3.5" />修改个人信息
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setChangePwdOpen(true)}>
+                <Lock className="h-3.5 w-3.5" />修改密码
+              </Button>
+            </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Audit status banner */}
+          {modificationRequest && (
+            <div className={`flex items-center justify-between rounded-lg border px-4 py-3 ${
+              modificationRequest.status === "pending_review"
+                ? "border-amber-200 bg-amber-50"
+                : modificationRequest.status === "approved"
+                  ? "border-emerald-200 bg-emerald-50"
+                  : modificationRequest.status === "rejected"
+                    ? "border-red-200 bg-red-50"
+                    : "border-gray-200 bg-gray-50"
+            }`}>
+              <div className="flex items-center gap-2.5">
+                {modificationRequest.status === "pending_review" && (
+                  <Clock className="h-4 w-4 shrink-0 text-amber-600" />
+                )}
+                {modificationRequest.status === "approved" && (
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                )}
+                {modificationRequest.status === "rejected" && (
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
+                )}
+                {modificationRequest.status === "cancelled" && (
+                  <XCircle className="h-4 w-4 shrink-0 text-gray-500" />
+                )}
+                <span className={`text-xs font-medium ${
+                  modificationRequest.status === "pending_review" ? "text-amber-700" :
+                  modificationRequest.status === "approved" ? "text-emerald-700" :
+                  modificationRequest.status === "rejected" ? "text-red-700" :
+                  "text-gray-600"
+                }`}>
+                  {modificationRequest.status === "pending_review" && "你有一条账号信息修改申请待米播审核，审核通过后将更新绑定手机号及联系人信息。"}
+                  {modificationRequest.status === "approved" && "你的账号信息修改申请已审核通过，绑定手机号及联系人信息已更新。"}
+                  {modificationRequest.status === "rejected" && `你的账号信息修改申请已被驳回${modificationRequest.rejectReason ? `：${modificationRequest.rejectReason}` : ""}。`}
+                  {modificationRequest.status === "cancelled" && "你的账号信息修改申请已取消。"}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => setAuditDetailOpen(true)}
+              >
+                查看申请 <ChevronRight className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+
           <DescTable
             rows={[
               [
-                { label: "登录账号", value: "yunlan_admin", mono: true },
-                { label: "当前账号角色", value: "客户管理员" },
+                { label: "登录账号", value: contactData.loginAccount, mono: true },
+                { label: "绑定手机号", value: contactData.maskedPhone },
               ],
               [
-                { label: "绑定手机号", value: "173****451" },
-                { label: "最近登录时间", value: "2026-07-15 14:32" },
+                { label: "联系人姓名", value: contactData.contactName },
+                { label: "联系人电话", value: maskPhone(contactData.contactPhone) },
               ],
               [
-                { label: "登录邮箱", value: "shu****.yan@yunlan.com" },
+                { label: "联系人邮箱", value: contactData.maskedEmail },
+                { label: "当前账号角色", value: contactData.role },
+              ],
+              [
+                { label: "账号状态", value: <Badge className="gap-1 border-emerald-200 bg-emerald-50 text-xs text-emerald-700"><CheckCircle2 className="h-3 w-3" />{contactData.status}</Badge> },
+                { label: "最近登录时间", value: contactData.lastLoginTime },
+              ],
+              [
                 { label: "密码", value: "********", mono: true },
+                { label: "——", value: "——" },
               ],
             ]}
           />
@@ -277,7 +401,7 @@ function AccountInfoPage() {
 
       {/* ═══════════════ Modals ═══════════════ */}
 
-      {/* Edit Customer Profile */}
+      {/* Edit Customer Profile — Module 1 */}
       {editProfileOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setEditProfileOpen(false)} />
@@ -319,32 +443,42 @@ function AccountInfoPage() {
         </div>
       )}
 
-      {/* Change Password */}
-      {changePwdOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setChangePwdOpen(false)} />
-          <div className="relative z-10 w-full max-w-[520px] rounded-2xl border border-border bg-background shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">修改密码</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">修改的是米播充值平台客户端的登录密码，不会影响星图账户、平台开户信息或授权状态。</p>
-              </div>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setChangePwdOpen(false)}>
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
-              </Button>
-            </div>
-            <div className="space-y-4 px-6 py-5">
-              <p className="text-[11px] text-muted-foreground">密码需为 8-20 位，包含字母和数字，建议包含特殊字符。</p>
-              <div className="space-y-1.5"><Label>当前密码 <span className="text-destructive">*</span></Label><Input type="password" placeholder="请输入当前登录密码" /></div>
-              <div className="space-y-1.5"><Label>新密码 <span className="text-destructive">*</span></Label><Input type="password" placeholder="请输入新密码" /></div>
-              <div className="space-y-1.5"><Label>确认新密码 <span className="text-destructive">*</span></Label><Input type="password" placeholder="请再次输入新密码" /></div>
-              <div className="flex items-center gap-2 pt-2">
-                <Button variant="outline" className="flex-1" onClick={() => setChangePwdOpen(false)}>取消</Button>
-                <Button className="flex-1" onClick={() => setChangePwdOpen(false)}>确认修改</Button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Edit Contact Info — Module 2 */}
+      {editContactOpen && (
+        <EditContactModal
+          open={editContactOpen}
+          onOpenChange={setEditContactOpen}
+          contactData={contactData}
+          onSubmit={(newPhone, name, phone, email, reason) => {
+            const now = new Date();
+            const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+            const req: ModificationRequest = {
+              id: `MOD-${now.getFullYear()}-${String(Math.floor(Math.random() * 90000) + 10000)}`,
+              status: "pending_review",
+              newPhone: newPhone,
+              contactName: name,
+              contactPhone: phone,
+              contactEmail: email,
+              reason,
+              submittedAt: ts,
+            };
+            setModificationRequest(req);
+            toast.success("修改申请已提交，请等待米播审核。");
+          }}
+        />
+      )}
+
+      {/* Change Password — Module 2 */}
+      {changePwdOpen && <ChangePasswordModal open={changePwdOpen} onOpenChange={setChangePwdOpen} />}
+
+      {/* Audit Detail */}
+      {auditDetailOpen && modificationRequest && (
+        <AuditDetailModal
+          open={auditDetailOpen}
+          onOpenChange={setAuditDetailOpen}
+          request={modificationRequest}
+          currentData={contactData}
+        />
       )}
 
       {/* Account Detail */}
@@ -397,8 +531,330 @@ function AccountInfoPage() {
         </div>
       )}
 
-      {/* Add Account Modal — reused from workbench */}
+      {/* Add Account Modal */}
       <AddAccountModal open={addAccountOpen} onOpenChange={setAddAccountOpen} />
+    </div>
+  );
+}
+
+// ── EditContactModal ────────────────────────────────────────────────────────
+
+function EditContactModal({
+  open,
+  onOpenChange,
+  contactData,
+  onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  contactData: {
+    maskedPhone: string;
+    contactName: string;
+    contactPhone: string;
+    contactEmail: string;
+  };
+  onSubmit: (newPhone: string, name: string, phone: string, email: string, reason: string) => void;
+}) {
+  const [newPhone, setNewPhone] = useState("");
+  const [contactName, setContactName] = useState(contactData.contactName);
+  const [contactPhone, setContactPhone] = useState(contactData.contactPhone);
+  const [contactEmail, setContactEmail] = useState(contactData.contactEmail);
+  const [reason, setReason] = useState("");
+
+  const isFormValid = contactName.trim() !== "" && contactPhone.trim() !== "" && reason.trim() !== "";
+  const phoneChanged = newPhone.trim() !== "" && newPhone.trim() !== contactData.contactPhone;
+
+  const handleSubmit = () => {
+    if (!isFormValid) return;
+    onSubmit(newPhone.trim(), contactName.trim(), contactPhone.trim(), contactEmail.trim(), reason.trim());
+    onOpenChange(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => onOpenChange(false)} />
+      <div className="relative z-10 flex max-h-[90vh] w-full max-w-[560px] flex-col rounded-2xl border border-border bg-background shadow-2xl">
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-border px-6 py-5">
+          <div className="space-y-0.5">
+            <h2 className="text-lg font-semibold text-foreground">修改个人信息</h2>
+            <p className="text-xs text-muted-foreground">修改绑定手机号、联系人信息后需提交米播审核，审核通过后生效。</p>
+          </div>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => onOpenChange(false)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto space-y-5 px-6 py-5">
+          {/* Current phone — readonly */}
+          <div className="space-y-1.5">
+            <Label>当前绑定手机号 <span className="text-destructive">*</span></Label>
+            <Input value={contactData.maskedPhone} disabled className="bg-muted/50 text-muted-foreground" />
+            <p className="text-[11px] text-muted-foreground">当前绑定的手机号，用于登录和安全验证，不可直接编辑</p>
+          </div>
+
+          {/* New phone */}
+          <div className="space-y-1.5">
+            <Label>新绑定手机号</Label>
+            <Input
+              type="tel"
+              placeholder="如需修改绑定手机号请填写新手机号"
+              value={newPhone}
+              onChange={(e) => setNewPhone(e.target.value)}
+              className="h-10"
+            />
+            <p className="text-[11px] text-muted-foreground">留空则不修改绑定手机号；填写后需提交米播审核，审核通过后生效</p>
+            {phoneChanged && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+                <p className="text-xs text-amber-700">修改绑定手机号需提交米播审核，审核通过前仍使用原手机号登录。</p>
+              </div>
+            )}
+          </div>
+
+          {/* Contact name */}
+          <div className="space-y-1.5">
+            <Label>联系人姓名 <span className="text-destructive">*</span></Label>
+            <Input
+              placeholder="请输入联系人姓名"
+              value={contactName}
+              onChange={(e) => setContactName(e.target.value)}
+              className="h-10"
+            />
+          </div>
+
+          {/* Contact phone */}
+          <div className="space-y-1.5">
+            <Label>联系人电话 <span className="text-destructive">*</span></Label>
+            <Input
+              type="tel"
+              placeholder="请输入联系人电话"
+              value={contactPhone}
+              onChange={(e) => setContactPhone(e.target.value)}
+              className="h-10"
+            />
+          </div>
+
+          {/* Contact email */}
+          <div className="space-y-1.5">
+            <Label>联系人邮箱</Label>
+            <Input
+              type="email"
+              placeholder="请输入联系人邮箱"
+              value={contactEmail}
+              onChange={(e) => setContactEmail(e.target.value)}
+              className="h-10"
+            />
+          </div>
+
+          {/* Reason */}
+          <div className="space-y-1.5">
+            <Label>修改原因 <span className="text-destructive">*</span></Label>
+            <Textarea
+              placeholder="请说明本次修改个人信息的原因，便于米播审核"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="min-h-[80px] resize-none"
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center gap-3 border-t border-border px-6 py-4">
+          <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>取消</Button>
+          <Button className="flex-1" disabled={!isFormValid} onClick={handleSubmit}>提交修改申请</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ChangePasswordModal ──────────────────────────────────────────────────────
+
+function ChangePasswordModal({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [currentPwd, setCurrentPwd] = useState("");
+  const [newPwd, setNewPwd] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
+
+  const isValid = currentPwd.trim() !== "" && newPwd.trim().length >= 8 && newPwd === confirmPwd;
+
+  const handleSubmit = () => {
+    if (!isValid) return;
+    toast.success("登录密码已修改成功，仅影响米播充值平台客户端登录，不影响星图账户授权及绑定信息。");
+    onOpenChange(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => onOpenChange(false)} />
+      <div className="relative z-10 w-full max-w-[520px] rounded-2xl border border-border bg-background shadow-2xl">
+        <div className="flex items-start justify-between border-b border-border px-6 py-4">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">修改密码</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              修改的是米播充值平台客户端的登录密码，不影响绑定手机号、星图账户授权状态或联系人信息。
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => onOpenChange(false)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="space-y-4 px-6 py-5">
+          <p className="text-[11px] text-muted-foreground">密码需为 8-20 位，包含字母和数字，建议包含特殊字符。</p>
+          <div className="space-y-1.5">
+            <Label>当前密码 <span className="text-destructive">*</span></Label>
+            <Input type="password" placeholder="请输入当前登录密码" value={currentPwd} onChange={(e) => setCurrentPwd(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>新密码 <span className="text-destructive">*</span></Label>
+            <Input type="password" placeholder="请输入新密码（8-20位，含字母和数字）" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>确认新密码 <span className="text-destructive">*</span></Label>
+            <Input type="password" placeholder="请再次输入新密码" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} />
+            {confirmPwd && newPwd !== confirmPwd && (
+              <p className="text-[11px] text-destructive">两次输入的密码不一致</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>取消</Button>
+            <Button className="flex-1" disabled={!isValid} onClick={handleSubmit}>确认修改</Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── AuditDetailModal ─────────────────────────────────────────────────────────
+
+function AuditDetailModal({
+  open,
+  onOpenChange,
+  request,
+  currentData,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  request: ModificationRequest;
+  currentData: { maskedPhone: string; contactName: string; contactPhone: string; contactEmail: string };
+}) {
+  const cfg = modificationStatusConfig[request.status];
+
+  const maskPhone = (phone: string) => {
+    if (phone.length < 7) return phone;
+    return phone.slice(0, 3) + "****" + phone.slice(-3);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => onOpenChange(false)} />
+      <div className="relative z-10 flex max-h-[90vh] w-full max-w-[560px] flex-col rounded-2xl border border-border bg-background shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-border px-6 py-5">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
+              <FileText className="h-3.5 w-3.5 text-white" />
+            </div>
+            <h2 className="text-lg font-semibold text-foreground">修改申请详情</h2>
+          </div>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => onOpenChange(false)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto space-y-4 px-6 py-5">
+          {/* Status */}
+          <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 p-4">
+            <span className="text-sm text-muted-foreground">申请状态</span>
+            <Badge className={`gap-1 text-xs ${cfg.className}`}>{cfg.icon}{cfg.label}</Badge>
+          </div>
+
+          {/* Application ID + time */}
+          <div className="rounded-xl border border-border/60 p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">申请编号</span>
+              <span className="font-mono text-sm font-medium text-foreground">{request.id}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">提交时间</span>
+              <span className="text-sm text-foreground">{request.submittedAt}</span>
+            </div>
+            {request.reviewedAt && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">审核时间</span>
+                <span className="text-sm text-foreground">{request.reviewedAt}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Changes */}
+          <div className="rounded-xl border border-border/60 p-4 space-y-2">
+            <h4 className="text-sm font-semibold text-foreground">申请修改内容</h4>
+            <div className="mt-2 space-y-2">
+              {request.newPhone && (
+                <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
+                  <span className="text-xs text-muted-foreground">绑定手机号</span>
+                  <div className="text-right">
+                    <span className="text-xs text-muted-foreground line-through mr-2">{currentData.maskedPhone}</span>
+                    <span className="text-sm font-medium text-foreground">→ {maskPhone(request.newPhone)}</span>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
+                <span className="text-xs text-muted-foreground">联系人姓名</span>
+                <div className="text-right">
+                  <span className="text-xs text-muted-foreground line-through mr-2">{currentData.contactName}</span>
+                  <span className="text-sm font-medium text-foreground">→ {request.contactName}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
+                <span className="text-xs text-muted-foreground">联系人电话</span>
+                <div className="text-right">
+                  <span className="text-xs text-muted-foreground line-through mr-2">{maskPhone(currentData.contactPhone)}</span>
+                  <span className="text-sm font-medium text-foreground">→ {maskPhone(request.contactPhone)}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
+                <span className="text-xs text-muted-foreground">联系人邮箱</span>
+                <div className="text-right">
+                  <span className="text-xs text-muted-foreground line-through mr-2">{currentData.contactEmail}</span>
+                  <span className="text-sm font-medium text-foreground">→ {request.contactEmail}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Reason */}
+          <div className="rounded-xl border border-border/60 p-4">
+            <h4 className="text-sm font-semibold text-foreground">修改原因</h4>
+            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{request.reason}</p>
+          </div>
+
+          {/* Reject reason */}
+          {request.status === "rejected" && request.rejectReason && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+              <h4 className="flex items-center gap-1.5 text-sm font-semibold text-red-700">
+                <AlertTriangle className="h-4 w-4" />驳回原因
+              </h4>
+              <p className="mt-2 text-sm text-red-600/80 leading-relaxed">{request.rejectReason}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-border px-6 py-4">
+          <Button className="w-full" onClick={() => onOpenChange(false)}>关闭</Button>
+        </div>
+      </div>
     </div>
   );
 }
