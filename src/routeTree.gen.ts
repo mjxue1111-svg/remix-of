@@ -66,7 +66,11 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/account-info' | '/dashboard' | '/recharge' | '/transaction-ledger'
+    | '/'
+    | '/account-info'
+    | '/dashboard'
+    | '/recharge'
+    | '/transaction-ledger'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/account-info' | '/dashboard' | '/recharge' | '/transaction-ledger'
   id:
