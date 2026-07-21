@@ -4,7 +4,6 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
-  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -127,31 +126,22 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isPublicRoute = pathname === "/start";
 
   return (
     <QueryClientProvider client={queryClient}>
       <ActiveIdentityProvider>
-        {isPublicRoute ? (
-          <>
-            <Outlet />
-            <Toaster position="top-center" richColors />
-          </>
-        ) : (
-          <SidebarProvider defaultOpen={true}>
-            <div className="flex min-h-screen w-full">
-              <AppSidebar />
-              <div className="flex flex-1 flex-col overflow-hidden">
-                <DashboardHeader />
-                <main className="flex-1 overflow-y-auto bg-background">
-                  <Outlet />
-                </main>
-                <Toaster position="top-center" richColors />
-              </div>
+        <SidebarProvider defaultOpen={true}>
+          <div className="flex min-h-screen w-full">
+            <AppSidebar />
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <DashboardHeader />
+              <main className="flex-1 overflow-y-auto bg-background">
+                <Outlet />
+              </main>
+              <Toaster position="top-center" richColors />
             </div>
-          </SidebarProvider>
-        )}
+          </div>
+        </SidebarProvider>
       </ActiveIdentityProvider>
     </QueryClientProvider>
   );

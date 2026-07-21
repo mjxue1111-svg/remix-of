@@ -36,7 +36,7 @@ export function DashboardHeader() {
 
   const handleLogout = () => {
     localStorage.removeItem("star-map.mockSession");
-    navigate({ to: "/login" });
+    navigate({ to: "/" });
   };
 
   return (

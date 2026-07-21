@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 
-import { LogIn, Wallet, BarChart3, Hexagon, Sparkles, LayoutDashboard, User } from "lucide-react";
+import { Wallet, BarChart3, Hexagon, LayoutDashboard, User } from "lucide-react";
 
 import {
   Sidebar,
@@ -17,8 +17,6 @@ import {
 } from "@/components/ui/sidebar";
 
 const menuItems = [
-  { title: "开始", url: "/start", icon: Sparkles },
-  { title: "注册 / 登录", url: "/login", icon: LogIn },
   { title: "工作台", url: "/", icon: LayoutDashboard },
   { title: "充值任务", url: "/recharge", icon: Wallet },
   { title: "余额流水看板", url: "/dashboard", icon: BarChart3 },
@@ -37,7 +35,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
-        <Link to="/start" className="flex items-center gap-3 outline-none">
+        <Link to="/" className="flex items-center gap-3 outline-none">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Hexagon className="h-5 w-5" />
           </div>

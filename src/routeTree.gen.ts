@@ -10,9 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TransactionLedgerRouteImport } from './routes/transaction-ledger'
-import { Route as StartRouteImport } from './routes/start'
 import { Route as RechargeRouteImport } from './routes/recharge'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AccountInfoRouteImport } from './routes/account-info'
 import { Route as IndexRouteImport } from './routes/index'
@@ -22,19 +20,9 @@ const TransactionLedgerRoute = TransactionLedgerRouteImport.update({
   path: '/transaction-ledger',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StartRoute = StartRouteImport.update({
-  id: '/start',
-  path: '/start',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const RechargeRoute = RechargeRouteImport.update({
   id: '/recharge',
   path: '/recharge',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -57,18 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account-info': typeof AccountInfoRoute
   '/dashboard': typeof DashboardRoute
-  '/login': typeof LoginRoute
   '/recharge': typeof RechargeRoute
-  '/start': typeof StartRoute
   '/transaction-ledger': typeof TransactionLedgerRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account-info': typeof AccountInfoRoute
   '/dashboard': typeof DashboardRoute
-  '/login': typeof LoginRoute
   '/recharge': typeof RechargeRoute
-  '/start': typeof StartRoute
   '/transaction-ledger': typeof TransactionLedgerRoute
 }
 export interface FileRoutesById {
@@ -76,38 +60,21 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/account-info': typeof AccountInfoRoute
   '/dashboard': typeof DashboardRoute
-  '/login': typeof LoginRoute
   '/recharge': typeof RechargeRoute
-  '/start': typeof StartRoute
   '/transaction-ledger': typeof TransactionLedgerRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
-    | '/account-info'
-    | '/dashboard'
-    | '/login'
-    | '/recharge'
-    | '/start'
-    | '/transaction-ledger'
+    '/' | '/account-info' | '/dashboard' | '/recharge' | '/transaction-ledger'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/account-info'
-    | '/dashboard'
-    | '/login'
-    | '/recharge'
-    | '/start'
-    | '/transaction-ledger'
+  to: '/' | '/account-info' | '/dashboard' | '/recharge' | '/transaction-ledger'
   id:
     | '__root__'
     | '/'
     | '/account-info'
     | '/dashboard'
-    | '/login'
     | '/recharge'
-    | '/start'
     | '/transaction-ledger'
   fileRoutesById: FileRoutesById
 }
@@ -115,9 +82,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountInfoRoute: typeof AccountInfoRoute
   DashboardRoute: typeof DashboardRoute
-  LoginRoute: typeof LoginRoute
   RechargeRoute: typeof RechargeRoute
-  StartRoute: typeof StartRoute
   TransactionLedgerRoute: typeof TransactionLedgerRoute
 }
 
@@ -130,25 +95,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TransactionLedgerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/start': {
-      id: '/start'
-      path: '/start'
-      fullPath: '/start'
-      preLoaderRoute: typeof StartRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/recharge': {
       id: '/recharge'
       path: '/recharge'
       fullPath: '/recharge'
       preLoaderRoute: typeof RechargeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -179,9 +130,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountInfoRoute: AccountInfoRoute,
   DashboardRoute: DashboardRoute,
-  LoginRoute: LoginRoute,
   RechargeRoute: RechargeRoute,
-  StartRoute: StartRoute,
   TransactionLedgerRoute: TransactionLedgerRoute,
 }
 export const routeTree = rootRouteImport
