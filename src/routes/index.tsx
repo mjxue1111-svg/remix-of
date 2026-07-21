@@ -39,6 +39,7 @@ import { TaskDetailDrawer, type DetailTaskInfo } from "@/components/TaskDetailDr
 import { UploadPaymentModal, type PaymentTaskInfo, type UploadMode } from "@/components/UploadPaymentModal";
 import { SpecialPaymentModal, type SpecialPaymentTaskInfo } from "@/components/SpecialPaymentModal";
 import { CancelOrderModal, type CancelTaskInfo } from "@/components/CancelOrderModal";
+import { ReuploadRejectedModal, type ReuploadRejectedTaskInfo } from "@/components/ReuploadRejectedModal";
 import { AccountLedgerDrawer, type LedgerAccountInfo } from "@/components/AccountLedgerDrawer";
 import { AccountDetailDrawer, type DetailAccountInfo } from "@/components/AccountDetailDrawer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -71,16 +72,42 @@ const specialStepLabels = ["客户提交特批申请", "米播评估", "特批�
 
 const regularStepDescs = [
   "客户已填写充值信息并提交充值申请",
-  "米播正在审核充值信息、账户信息及金额信息",
-  "米播审核通过，进行内部财务确认、付款及账户充值处理",
+  "米播正在审核充值信息、账户信息及付款凭证",
+  "米播审核通过，正在进行账户充值处理",
+  "米播正在完成账户充值",
+];
+const regularStepDescsCompleted = [
+  "客户已填写充值信息并提交充值申请",
+  "米播已完成审核",
+  "米播已完成账户充值处理",
   "米播已完成账户充值，客户账户余额已更新",
+];
+const regularStepDescsPending = [
+  "客户将填写充值信息并提交充值申请",
+  "米播将审核充值信息、账户信息及金额信息",
+  "米播审核通过后将进行账户充值处理",
+  "充值完成后，客户账户余额将更新",
 ];
 const specialStepDescs = [
   "客户已提交特批充值申请，说明特批原因及承诺付款安排",
   "米播正在评估特批申请",
+  "米播正在处理特批申请",
+  "米播正在进行账户充值处理",
+  "请上传付款凭证以完成补款确认",
+];
+const specialStepDescsCompleted = [
+  "客户已提交特批充值申请，说明特批原因及承诺付款安排",
+  "米播已完成特批评估",
   "特批申请已通过，米播可先行处理充值",
   "米播已完成客户账户充值",
-  "客户上传付款凭证，待财务确认到账",
+  "客户已上传付款凭证，财务已确认到账",
+];
+const specialStepDescsPending = [
+  "客户将提交特批充值申请",
+  "米播将评估账户、金额、付款安排及业务情况",
+  "待米播评估通过后进入特批处理",
+  "待特批通过后进行账户充值处理",
+  "客户需按承诺时间付款并上传凭证",
 ];
 
 const nodeStatusMap: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
@@ -155,6 +182,58 @@ function isInAudit(task: Task): boolean {
   return task.step >= 2;
 }
 
+// ── Rejection helpers ──────────────────────────────────────────────────────
+function isPaymentRejected(task: Task): boolean {
+  if (task.rechargeType === "special") {
+    return task.node === "sp_payment_rejected" || (task.paymentStatus === "error" && task.step >= 5);
+  }
+  return task.paymentStatus === "error" && task.node === "audit_rejected";
+}
+
+function isApplicationRejected(task: Task): boolean {
+  const isErrorNode = task.node === "audit_rejected" || task.node === "sp_rejected" || task.node === "transfer_error";
+  return isErrorNode && !isPaymentRejected(task);
+}
+
+function getRejectHoverTip(task: Task): string {
+  if (task.rechargeType === "special" && isPaymentRejected(task)) {
+    return "补款凭证被驳回，请重新上传";
+  }
+  if (task.rechargeType === "regular" && isPaymentRejected(task)) {
+    return "付款凭证被驳回，请重新上传";
+  }
+  if (task.node === "audit_rejected") {
+    return "申请已驳回，请查看原因";
+  }
+  if (task.node === "sp_rejected") {
+    return "特批申请已驳回，请查看原因";
+  }
+  if (task.node === "transfer_error") {
+    return "账户信息未通过，请重新确认";
+  }
+  return "已驳回";
+}
+
+function getCurrentStepDesc(task: Task): string {
+  const isSpecial = task.rechargeType === "special";
+  const stepIdx = task.step - 1;
+  const isError = task.node === "transfer_error" || task.node === "audit_rejected" || task.node === "sp_rejected" || task.node === "sp_payment_rejected";
+  const isCompleted = getOrderCompleted(task);
+
+  if (task.isDraft) return "草稿，尚未正式提交";
+  if (isCompleted) {
+    if (isSpecial && task.financeConfirmed) return "付款凭证已确认，订单已完成";
+    return isSpecial ? "米播已完成客户账户充值，请上传付款凭证" : "米播已完成账户充值，客户账户余额已更新";
+  }
+  if (isError) return getRejectHoverTip(task);
+
+  if (isSpecial && task.step === 5 && task.paymentReceipt && task.node === "sp_payment_uploaded") {
+    return "付款凭证已提交，米播正在确认到账";
+  }
+
+  return isSpecial ? specialStepDescs[stepIdx] : regularStepDescs[stepIdx];
+}
+
 function getPaymentInfo(task: Task): PaymentInfo {
   const hasReceipt = !!task.paymentReceipt;
   const isConfirmed = task.financeConfirmed;
@@ -199,24 +278,21 @@ function canCancelOrder(task: Task): boolean {
 
 function getStepTooltip(task: Task, index: number, isSpecial: boolean): string {
   const hasReceipt = !!task.paymentReceipt;
-  const hasPaid = !!task.paymentReceipt;
   const stepNum = index + 1;
 
   if (isSpecial) {
     const tips = [
       "客户已提交特批充值申请",
-      task.step >= 2 && task.node === "sp_rejected" ? "特批申请未通过，请查看详情" : "米播正在评估账户、金额、付款安排及业务情况",
+      "米播正在评估账户、金额、付款安排及业务情况",
       "特批申请已通过，米播可先行处理充值",
       "米播已完成客户账户充值",
       stepNum === 5 && task.step >= 5 && task.financeConfirmed
         ? "客户已上传付款凭证，财务已确认到账"
         : stepNum === 5 && task.step >= 4 && hasReceipt && !task.financeConfirmed
           ? "客户已上传付款凭证，等待财务确认到账"
-          : stepNum === 5 && task.paymentStatus === "error"
-            ? "付款凭证需重新提交"
-            : stepNum === 5 && task.step >= 4 && !hasReceipt
-              ? "客户需按承诺时间付款并上传凭证"
-              : "客户上传付款凭证，待财务确认",
+          : stepNum === 5 && task.step >= 4 && !hasReceipt
+            ? "客户需按承诺时间付款并上传凭证"
+            : "客户上传付款凭证，待财务确认",
     ];
     return tips[index] || "";
   }
@@ -785,19 +861,24 @@ function RechargeTasks({
                             else if (stepNum < task.step) segClass = "bg-emerald-400";
                             else if (stepNum === task.step) segClass = isError ? "bg-red-500" : isSpecial ? "bg-amber-500" : "bg-primary";
                             if (!task.isDraft && isCompleted && stepNum >= task.step) segClass = "bg-emerald-500";
-                            const tip = getStepTooltip(task, i, isSpecial);
+                            const tip = stepNum < task.step
+                              ? (isSpecial ? specialStepDescsCompleted[i] : regularStepDescsCompleted[i])
+                              : stepNum > task.step
+                                ? (isSpecial ? specialStepDescsPending[i] : regularStepDescsPending[i])
+                                : getCurrentStepDesc(task);
                             return (
                               <div key={stepLabel} className="group relative flex-1" title={stepLabel}>
                                 <div className={`h-1.5 w-full rounded-full ${segClass}`} />
-                                <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] leading-relaxed text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">
+                                <span className="pointer-events-none absolute -top-7 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2.5 py-1.5 text-[10px] leading-snug text-background shadow-lg opacity-0 transition-opacity group-hover:opacity-100">
                                   {tip}
+                                  <span className="absolute left-1/2 -translate-x-1/2 top-full h-0 w-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-foreground" />
                                 </span>
                               </div>
                             );
                           })}
                         </div>
                         <p className={`text-[11px] font-medium ${isError ? "text-destructive" : isCompleted ? "text-emerald-600" : task.isDraft ? "text-muted-foreground" : "text-muted-foreground"}`}>
-                          {task.isDraft ? "草稿｜尚未提交" : `第 ${task.step}/${task.totalSteps} 步${isError ? `｜${node.label}` : isCompleted ? (isSpecial ? `｜客户上传付款凭证完成` : `｜充值完成`) : `｜${node.label}${task.step >= 4 && isSpecial && !task.paymentReceipt ? "，待客户上传付款凭证" : task.step >= 2 && !isSpecial ? "中" : ""}`}`}
+                          {task.isDraft ? "草稿｜尚未提交" : `第 ${task.step}/${task.totalSteps} 步｜${getCurrentStepDesc(task)}`}
                         </p>
                       </div>
                     </TableCell>
@@ -1057,6 +1138,8 @@ function Index() {
   const [uploadMode, setUploadMode] = useState<UploadMode>("upload");
   const [specialPaymentOpen, setSpecialPaymentOpen] = useState(false);
   const [specialPaymentTask, setSpecialPaymentTask] = useState<SpecialPaymentTaskInfo | null>(null);
+  const [reuploadOpen, setReuploadOpen] = useState(false);
+  const [reuploadTask, setReuploadTask] = useState<ReuploadRejectedTaskInfo | null>(null);
   const [cancelOrderOpen, setCancelOrderOpen] = useState(false);
   const [cancelTask, setCancelTask] = useState<Task | null>(null);
   const [ledgerOpen, setLedgerOpen] = useState(false);
@@ -1220,6 +1303,12 @@ function Index() {
         open={specialPaymentOpen}
         onOpenChange={setSpecialPaymentOpen}
         task={specialPaymentTask}
+      />
+
+      <ReuploadRejectedModal
+        open={reuploadOpen}
+        onOpenChange={setReuploadOpen}
+        task={reuploadTask}
       />
 
       <CancelOrderModal

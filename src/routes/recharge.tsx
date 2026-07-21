@@ -24,6 +24,7 @@ import { TaskDetailDrawer, type DetailTaskInfo } from "@/components/TaskDetailDr
 import { UploadPaymentModal, type PaymentTaskInfo, type UploadMode } from "@/components/UploadPaymentModal";
 import { CancelOrderModal, type CancelTaskInfo } from "@/components/CancelOrderModal";
 import { SpecialPaymentModal, type SpecialPaymentTaskInfo } from "@/components/SpecialPaymentModal";
+import { ReuploadRejectedModal, type ReuploadRejectedTaskInfo } from "@/components/ReuploadRejectedModal";
 
 export const Route = createFileRoute("/recharge")({ component: RechargePage });
 
@@ -34,16 +35,42 @@ const specialStepLabels = ["客户提交特批申请", "米播评估", "特批�
 
 const regularStepDescs = [
   "客户已填写充值信息并提交充值申请",
-  "米播正在审核充值信息、账户信息及金额信息",
-  "米播审核通过，进行内部财务确认、付款及账户充值处理",
+  "米播正在审核充值信息、账户信息及付款凭证",
+  "米播审核通过，正在进行账户充值处理",
+  "米播正在完成账户充值",
+];
+const regularStepDescsCompleted = [
+  "客户已填写充值信息并提交充值申请",
+  "米播已完成审核",
+  "米播已完成账户充值处理",
   "米播已完成账户充值，客户账户余额已更新",
+];
+const regularStepDescsPending = [
+  "客户将填写充值信息并提交充值申请",
+  "米播将审核充值信息、账户信息及金额信息",
+  "米播审核通过后将进行账户充值处理",
+  "充值完成后，客户账户余额将更新",
 ];
 const specialStepDescs = [
   "客户已提交特批充值申请，说明特批原因及承诺付款安排",
   "米播正在评估特批申请",
+  "米播正在处理特批申请",
+  "米播正在进行账户充值处理",
+  "请上传付款凭证以完成补款确认",
+];
+const specialStepDescsCompleted = [
+  "客户已提交特批充值申请，说明特批原因及承诺付款安排",
+  "米播已完成特批评估",
   "特批申请已通过，米播可先行处理充值",
   "米播已完成客户账户充值",
-  "客户上传付款凭证，待财务确认到账",
+  "客户已上传付款凭证，财务已确认到账",
+];
+const specialStepDescsPending = [
+  "客户将提交特批充值申请",
+  "米播将评估账户、金额、付款安排及业务情况",
+  "待米播评估通过后进入特批处理",
+  "待特批通过后进行账户充值处理",
+  "客户需按承诺时间付款并上传凭证",
 ];
 
 const nodeStatusMap: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
@@ -81,6 +108,9 @@ interface Task {
   paymentReceipt?: string; financeConfirmed?: boolean; paymentStatus?: string;
   paymentAmount?: string; paymentTime?: string; paymentAccountName?: string;
   paymentBank?: string;
+  errorReason?: string; errorDescription?: string;
+  specialReason?: string; specialExpectedPayTime?: string;
+  specialApprovedTime?: string; specialCompletedTime?: string;
 }
 
 const allTasks: Task[] = [
@@ -89,14 +119,14 @@ const allTasks: Task[] = [
   { id: "RC-2026-07011", account: "云岚效果投放", accountId: "ST-10086102", subject: "上海云岚科技有限公司", accountType: "投放账户", amount: "¥150,000.00", payableAmount: "¥147,000.00", discount: "98 折", node: "finance_confirm", rechargeType: "regular", step: 3, totalSteps: 4, time: "2026-07-14 09:15", purpose: "广告投放", paymentReceipt: "客户回单_20260714.pdf", paymentAmount: "¥147,000.00", paymentTime: "2026-07-14 09:15", paymentAccountName: "上海云岚科技有限公司", financeConfirmed: false, orderCompleted: false },
   { id: "RC-2026-07010", account: "云岚内容增长", accountId: "ST-10086103", subject: "上海云岚科技有限公司", accountType: "运营账户", amount: "¥80,000.00", payableAmount: "¥78,400.00", discount: "98 折", node: "completed", rechargeType: "regular", step: 4, totalSteps: 4, time: "2026-07-13 16:30", purpose: "助推投流", paymentReceipt: "回单_20260713.pdf", financeConfirmed: true, orderCompleted: true },
   { id: "RC-2026-07009", account: "云岚品牌中心", accountId: "ST-10086101", subject: "上海云岚科技有限公司", accountType: "主账户", amount: "¥50,000.00", payableAmount: "¥49,000.00", discount: "98 折", node: "finance_confirm", rechargeType: "regular", step: 3, totalSteps: 4, time: "2026-07-12 10:45", purpose: "达人采买", paymentReceipt: "回单_20260712.pdf", financeConfirmed: true, orderCompleted: false },
-  { id: "RC-2026-07008", account: "云岚品牌中心", accountId: "ST-10086101", subject: "上海云岚科技有限公司", accountType: "主账户", amount: "¥30,000.00", payableAmount: "¥29,400.00", discount: "98 折", node: "audit_rejected", rechargeType: "regular", step: 2, totalSteps: 4, time: "2026-07-12 08:00", purpose: "其他", paymentReceipt: "回单_20260712.pdf", orderCompleted: false, paymentAmount: "¥29,400.00", paymentTime: "2026-07-12 08:00", paymentAccountName: "上海云岚科技有限公司", financeConfirmed: false },
+  { id: "RC-2026-07008", account: "云岚品牌中心", accountId: "ST-10086101", subject: "上海云岚科技有限公司", accountType: "主账户", amount: "¥30,000.00", payableAmount: "¥29,400.00", discount: "98 折", node: "audit_rejected", rechargeType: "regular", step: 2, totalSteps: 4, time: "2026-07-12 08:00", purpose: "其他", paymentReceipt: "回单_20260712.pdf", paymentStatus: "error", orderCompleted: false, paymentAmount: "¥29,400.00", paymentTime: "2026-07-12 08:00", paymentAccountName: "上海云岚科技有限公司", financeConfirmed: false, errorReason: "付款凭证不清晰，无法核对付款金额", errorDescription: "请重新上传清晰的银行回单，确保付款金额、收款方信息清晰可辨。" },
   // Draft — regular
   { id: "RC-2026-07006", account: "云岚品牌中心", accountId: "ST-10086101", subject: "上海云岚科技有限公司", accountType: "主账户", isDraft: true, amount: "¥100,000.00", payableAmount: "¥98,000.00", discount: "98 折", node: "draft", rechargeType: "regular", step: 0, totalSteps: 4, time: "2026-07-15 18:30", purpose: "达人采买", orderCompleted: false },
   // Special recharge — various states
   { id: "RC-2026-07005", account: "云岚达人合作", accountId: "ST-10086105", subject: "上海云岚科技有限公司", accountType: "品牌账户", amount: "¥40,000.00", payableAmount: "¥39,200.00", discount: "98 折", node: "sp_payment_pending", rechargeType: "special", step: 5, totalSteps: 5, time: "2026-07-15 11:00", purpose: "广告投放", orderCompleted: false },
   { id: "RC-2026-07004", account: "云岚新品推广", accountId: "ST-10086104", subject: "上海云岚科技有限公司", accountType: "投放账户", amount: "¥80,000.00", payableAmount: "¥78,400.00", discount: "98 折", node: "sp_payment_uploaded", rechargeType: "special", step: 5, totalSteps: 5, time: "2026-07-14 15:00", purpose: "达人采买", paymentReceipt: "特批付款回单_20260714.pdf", financeConfirmed: false, orderCompleted: false },
   { id: "RC-2026-07003", account: "云岚内容增长", accountId: "ST-10086103", subject: "上海云岚科技有限公司", accountType: "运营账户", amount: "¥120,000.00", payableAmount: "¥117,600.00", discount: "98 折", node: "sp_evaluating", rechargeType: "special", step: 2, totalSteps: 5, time: "2026-07-14 10:30", purpose: "助推投流", orderCompleted: false },
-  { id: "RC-2026-07002", account: "云岚效果投放", accountId: "ST-10086102", subject: "上海云岚科技有限公司", accountType: "投放账户", amount: "¥60,000.00", payableAmount: "¥58,800.00", discount: "98 折", node: "sp_payment_rejected", rechargeType: "special", step: 5, totalSteps: 5, time: "2026-07-13 14:00", purpose: "广告投放", paymentReceipt: "特批回单_20260713.pdf", paymentStatus: "error", financeConfirmed: false, orderCompleted: false },
+  { id: "RC-2026-07002", account: "云岚效果投放", accountId: "ST-10086102", subject: "上海云岚科技有限公司", accountType: "投放账户", amount: "¥60,000.00", payableAmount: "¥58,800.00", discount: "98 折", node: "sp_payment_rejected", rechargeType: "special", step: 5, totalSteps: 5, time: "2026-07-13 14:00", purpose: "广告投放", paymentReceipt: "特批回单_20260713.pdf", paymentStatus: "error", financeConfirmed: false, orderCompleted: false, errorReason: "付款主体与申请主体不一致", errorDescription: "请确认付款账户与申请客户主体一致后重新提交，或补充代付说明。", specialReason: "客户投放排期紧急，账户余额不足，需先充值保证投放", specialExpectedPayTime: "2026-07-18", specialApprovedTime: "2026-07-12 15:00", specialCompletedTime: "2026-07-12 17:00" },
   { id: "RC-2026-07001", account: "云岚品牌中心", accountId: "ST-10086101", subject: "上海云岚科技有限公司", accountType: "主账户", amount: "¥90,000.00", payableAmount: "¥88,200.00", discount: "98 折", node: "sp_approved", rechargeType: "special", step: 3, totalSteps: 5, time: "2026-07-12 09:00", purpose: "达人采买", orderCompleted: false },
   // Draft — special
   { id: "RC-2026-07007", account: "云岚品牌中心", accountId: "ST-10086101", subject: "上海云岚科技有限公司", accountType: "主账户", isDraft: true, amount: "¥70,000.00", payableAmount: "¥68,600.00", discount: "98 折", node: "draft", rechargeType: "special", step: 0, totalSteps: 5, time: "2026-07-13 20:00", purpose: "广告投放", orderCompleted: false },
@@ -105,6 +135,63 @@ const allTasks: Task[] = [
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function isInAudit(task: Task): boolean { return task.step >= 2; }
+
+// ── Rejection helpers ──────────────────────────────────────────────────────
+
+/** Payment receipt was rejected (not audit/application) */
+function isPaymentRejected(task: Task): boolean {
+  if (task.rechargeType === "special") {
+    return task.node === "sp_payment_rejected" || (task.paymentStatus === "error" && task.step >= 5);
+  }
+  return task.paymentStatus === "error" && task.node === "audit_rejected";
+}
+
+/** Application/audit itself was rejected (not payment receipt) */
+function isApplicationRejected(task: Task): boolean {
+  const isErrorNode = task.node === "audit_rejected" || task.node === "sp_rejected" || task.node === "transfer_error";
+  return isErrorNode && !isPaymentRejected(task);
+}
+
+function getRejectHoverTip(task: Task): string {
+  if (task.rechargeType === "special" && isPaymentRejected(task)) {
+    return "补款凭证被驳回，请重新上传";
+  }
+  if (task.rechargeType === "regular" && isPaymentRejected(task)) {
+    return "付款凭证被驳回，请重新上传";
+  }
+  if (task.node === "audit_rejected") {
+    return "申请已驳回，请查看原因";
+  }
+  if (task.node === "sp_rejected") {
+    return "特批申请已驳回，请查看原因";
+  }
+  if (task.node === "transfer_error") {
+    return "账户信息未通过，请重新确认";
+  }
+  return "已驳回";
+}
+
+/** Description for the current step — shown below progress bar and used as hover for the current node */
+function getCurrentStepDesc(task: Task): string {
+  const isSpecial = task.rechargeType === "special";
+  const stepIdx = task.step - 1;
+  const isError = task.node === "transfer_error" || task.node === "audit_rejected" || task.node === "sp_rejected" || task.node === "sp_payment_rejected";
+  const isCompleted = getOrderCompleted(task);
+
+  if (task.isDraft) return "草稿，尚未正式提交";
+  if (isCompleted) {
+    if (isSpecial && task.financeConfirmed) return "付款凭证已确认，订单已完成";
+    return isSpecial ? "米播已完成客户账户充值，请上传付款凭证" : "米播已完成账户充值，客户账户余额已更新";
+  }
+  if (isError) return getRejectHoverTip(task);
+
+  // Processing — special handling for payment-uploaded (step 5, receipt exists, not confirmed)
+  if (isSpecial && task.step === 5 && task.paymentReceipt && task.node === "sp_payment_uploaded") {
+    return "付款凭证已提交，米播正在确认到账";
+  }
+
+  return isSpecial ? specialStepDescs[stepIdx] : regularStepDescs[stepIdx];
+}
 
 type PaymentInfo = { statusLabel: string; statusClass: string; receiptFile?: string; actionLabel?: string; actionMode?: UploadMode; isError?: boolean };
 
@@ -150,6 +237,8 @@ function RechargePage() {
   const [cancelTask, setCancelTask] = useState<Task | null>(null);
   const [specialPaymentOpen, setSpecialPaymentOpen] = useState(false);
   const [specialPaymentTask, setSpecialPaymentTask] = useState<SpecialPaymentTaskInfo | null>(null);
+  const [reuploadOpen, setReuploadOpen] = useState(false);
+  const [reuploadTask, setReuploadTask] = useState<ReuploadRejectedTaskInfo | null>(null);
   const [sortAsc, setSortAsc] = useState(false); // default: desc
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -236,7 +325,7 @@ function RechargePage() {
   const buildDetailTaskInfo = (t: Task | null): DetailTaskInfo | null => {
     if (!t) return null;
     const node = nodeStatusMap[t.node];
-    return { id: t.id, account: t.account, accountId: t.accountId, amount: t.amount, payableAmount: t.payableAmount, discount: t.discount, node: t.node, nodeLabel: node?.label ?? "", nodeClassName: node?.className ?? "", handler: "", statusDescription: "", time: t.time, rechargeType: t.rechargeType, step: t.step, totalSteps: t.totalSteps, isDraft: t.isDraft, paymentStatus: t.paymentStatus, paymentAmount: t.paymentAmount, paymentTime: t.paymentTime, paymentAccountName: t.paymentAccountName, paymentBank: t.paymentBank, paymentReceipt: t.paymentReceipt, financeConfirmed: t.financeConfirmed, financeConfirmedTime: (t as any).financeConfirmedTime, errorReason: (t as any).errorReason, errorDescription: (t as any).errorDescription };
+    return { id: t.id, account: t.account, accountId: t.accountId, amount: t.amount, payableAmount: t.payableAmount, discount: t.discount, node: t.node, nodeLabel: node?.label ?? "", nodeClassName: node?.className ?? "", handler: "", statusDescription: "", time: t.time, rechargeType: t.rechargeType, step: t.step, totalSteps: t.totalSteps, isDraft: t.isDraft, paymentStatus: t.paymentStatus, paymentAmount: t.paymentAmount, paymentTime: t.paymentTime, paymentAccountName: t.paymentAccountName, paymentBank: t.paymentBank, paymentReceipt: t.paymentReceipt, financeConfirmed: t.financeConfirmed, financeConfirmedTime: (t as any).financeConfirmedTime, errorReason: t.errorReason, errorDescription: t.errorDescription };
   };
 
   const buildPaymentTaskInfo = (t: Task | null): PaymentTaskInfo | null => {
@@ -304,12 +393,12 @@ function RechargePage() {
           <SelectTrigger className="h-9 w-36 text-sm"><SelectValue placeholder="当前节点" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">全部</SelectItem>
-            <SelectItem value="draft">草稿 / 尚未提交</SelectItem>
+            <SelectItem value="draft">草稿</SelectItem>
             <SelectItem value="pending_processing">待米播处理</SelectItem>
             <SelectItem value="recharging">充值处理中</SelectItem>
             <SelectItem value="awaiting_payment">待客户上传付款凭证</SelectItem>
             <SelectItem value="completed">已完成</SelectItem>
-            <SelectItem value="error">异常 / 已驳回</SelectItem>
+            <SelectItem value="error">已驳回</SelectItem>
           </SelectContent>
         </Select>
         <Select value={filterPayStatus} onValueChange={setFilterPayStatus}>
@@ -440,17 +529,24 @@ function RechargePage() {
                             else if (sn < task.step) segClass = "bg-emerald-400";
                             else if (sn === task.step) segClass = isError ? "bg-red-500" : isSpecial ? "bg-amber-500" : "bg-primary";
                             if (!task.isDraft && isCompleted && sn >= task.step) segClass = "bg-emerald-500";
-                            const tip = isSpecial ? specialStepDescs[i] : regularStepDescs[i];
+                            const tip = sn < task.step
+                              ? (isSpecial ? specialStepDescsCompleted[i] : regularStepDescsCompleted[i])
+                              : sn > task.step
+                                ? (isSpecial ? specialStepDescsPending[i] : regularStepDescsPending[i])
+                                : getCurrentStepDesc(task);
                             return (
                               <div key={sl} className="group relative flex-1" title={sl}>
                                 <div className={`h-1.5 w-full rounded-full ${segClass}`} />
-                                <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">{tip}</span>
+                                <span className="pointer-events-none absolute -top-7 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2.5 py-1.5 text-[10px] leading-snug text-background shadow-lg opacity-0 transition-opacity group-hover:opacity-100">
+                                  {tip}
+                                  <span className="absolute left-1/2 -translate-x-1/2 top-full h-0 w-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-foreground" />
+                                </span>
                               </div>
                             );
                           })}
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {task.isDraft ? "草稿｜尚未提交" : `第 ${task.step}/${task.totalSteps} 步${isError ? `｜${node.label}` : isCompleted ? (isSpecial ? `｜客户上传付款凭证完成` : `｜充值完成`) : `｜${node.label}${task.step >= 4 && isSpecial && !task.paymentReceipt ? "，待客户上传付款凭证" : ""}`}`}
+                        <p className={`text-xs font-medium ${isError ? "text-destructive" : isCompleted ? "text-emerald-600" : task.isDraft ? "text-muted-foreground" : "text-muted-foreground"}`}>
+                          {task.isDraft ? "草稿｜尚未提交" : `第 ${task.step}/${task.totalSteps} 步｜${getCurrentStepDesc(task)}`}
                         </p>
                       </div>
                     </TableCell>
@@ -473,30 +569,43 @@ function RechargePage() {
                     {/* 操作 */}
                     <TableCell className="py-2">
                       <div className="flex flex-col gap-1">
-                        {/* Row 1: 继续提交 */}
-                        {task.isDraft ? (
+                        {/* Row 1: 重新提交付款凭证 — payment rejected (regular or special) */}
+                        {isPaymentRejected(task) ? (
+                          <Button size="sm" variant="outline" className="h-7 gap-1 text-xs border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 w-full justify-center" onClick={() => { setReuploadTask(task); setReuploadOpen(true); }}>
+                            <Upload className="h-3 w-3" />重新提交付款凭证
+                          </Button>
+                        ) : isApplicationRejected(task) ? (
+                          /* Row 1b: 继续提交 — application/audit rejected */
+                          <Button size="sm" variant="outline" className="h-7 gap-1 text-xs border-primary/30 bg-sapphire-subtle text-primary hover:bg-sapphire-muted w-full justify-center" onClick={() => setRechargeModalOpen(true)}>
+                            <Upload className="h-3 w-3" />继续提交
+                          </Button>
+                        ) : task.isDraft ? (
+                          /* Row 1c: 继续提交 — draft */
                           <Button size="sm" variant="outline" className="h-7 gap-1 text-xs border-primary/30 bg-sapphire-subtle text-primary hover:bg-sapphire-muted w-full justify-center" onClick={() => setRechargeModalOpen(true)}>
                             <Upload className="h-3 w-3" />继续提交
                           </Button>
                         ) : (
+                          /* Row 1d: 继续提交 — disabled for submitted orders */
                           <div className="group relative">
                             <Button size="sm" variant="ghost" disabled className="h-7 gap-1 text-xs w-full justify-center">继续提交</Button>
                             <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">该充值申请已提交，暂不可继续编辑</span>
                           </div>
                         )}
-                        {/* Row 2: 提交付款凭证 — only for 特批 */}
-                        {isSpecial && (
+                        {/* Row 2: 提交付款凭证 — only for 特批 (non-rejected, non-payment-rejected since that's handled above) */}
+                        {isSpecial && !isPaymentRejected(task) && (
                           !task.isDraft && !task.financeConfirmed && (payInfo.actionMode === "upload" || payInfo.actionMode === "supplement" || payInfo.actionMode === "reupload_error") ? (
                             <Button size="sm" variant="outline" className={`h-7 gap-1 text-xs w-full justify-center ${payInfo.actionMode === "reupload_error" ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100" : "border-primary/30 bg-sapphire-subtle text-primary hover:bg-sapphire-muted"}`} onClick={() => handleSpecialPayment(task)}>
                               <Upload className="h-3 w-3" />{payInfo.actionMode === "reupload_error" ? "重新提交付款凭证" : "提交付款凭证"}
                             </Button>
                           ) : (
-                            <div className="group relative">
-                              <Button size="sm" variant="ghost" disabled className="h-7 gap-1 text-xs w-full justify-center">
-                                {payInfo.actionMode === "reupload_error" ? "重新提交付款凭证" : "提交付款凭证"}
-                              </Button>
-                              <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">当前状态暂不支持提交付款凭证</span>
-                            </div>
+                            !isPaymentRejected(task) && (
+                              <div className="group relative">
+                                <Button size="sm" variant="ghost" disabled className="h-7 gap-1 text-xs w-full justify-center">
+                                  {payInfo.actionMode === "reupload_error" ? "重新提交付款凭证" : "提交付款凭证"}
+                                </Button>
+                                <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">当前状态暂不支持提交付款凭证</span>
+                              </div>
+                            )
                           )
                         )}
                         {/* Row 3: 查看详情 */}
@@ -581,6 +690,7 @@ function RechargePage() {
       <UploadPaymentModal open={uploadOpen} onOpenChange={setUploadOpen} task={buildPaymentTaskInfo(uploadTask)} mode={uploadMode} />
       <CancelOrderModal open={cancelOpen} onOpenChange={setCancelOpen} task={buildCancelTaskInfo(cancelTask)} />
       <SpecialPaymentModal open={specialPaymentOpen} onOpenChange={setSpecialPaymentOpen} task={specialPaymentTask} />
+      <ReuploadRejectedModal open={reuploadOpen} onOpenChange={setReuploadOpen} task={reuploadTask} />
     </div>
   );
 }
