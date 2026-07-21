@@ -16,4 +16,4 @@ function DevModals() {
   );
 }
 
-export const Route = createFileRoute("/_dev-modals")({ component: DevModals });
+export const Route = createFileRoute("/dev-modals")({ component: DevModals });
