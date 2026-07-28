@@ -16,6 +16,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ActiveIdentityProvider } from "@/hooks/useActiveIdentity";
 
 import appCss from "../styles.css?url";
+import "@douyinfe/semi-ui/dist/css/semi.min.css";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
