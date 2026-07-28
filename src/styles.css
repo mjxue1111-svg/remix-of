@@ -1,7 +1,6 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
-@import "@douyinfe/semi-ui/dist/css/semi.min.css";
 
 @custom-variant dark (&:is(.dark *));
 
