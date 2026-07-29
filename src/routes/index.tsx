@@ -382,6 +382,16 @@ const accounts = [
     status: "正常",
     updatedAt: "2026-07-10 13:58",
   },
+  {
+    name: "云岚直播推广", accountType: "投放账户",
+    accountId: "ST-10086106",
+    subject: "上海云岚科技有限公司",
+    balance: "",
+    monthlyRecharge: "",
+    monthlySpend: "",
+    status: "待审核",
+    updatedAt: "",
+  },
 ];
 
 const accountTypeClass: Record<string, string> = {
@@ -397,10 +407,15 @@ const accountStatusMap: Record<string, { label: string; variant: "default" | "se
     variant: "outline",
     className: "border-emerald-200 bg-emerald-50 text-emerald-700",
   },
-  "审核中": {
-    label: "审核中",
-    variant: "secondary",
-    className: "border-blue-200 bg-blue-50 text-blue-700",
+  "待审核": {
+    label: "待审核",
+    variant: "outline",
+    className: "border-orange-200 bg-orange-50 text-orange-700",
+  },
+  "审核驳回": {
+    label: "审核驳回",
+    variant: "outline",
+    className: "border-red-200 bg-red-50 text-red-700",
   },
   "异常": {
     label: "异常",
@@ -413,29 +428,6 @@ const accountStatusMap: Record<string, { label: string; variant: "default" | "se
     className: "border-gray-200 bg-gray-50 text-gray-600",
   },
 };
-
-const accountSummary = [
-  {
-    label: "已绑定账户",
-    value: "3 个",
-    icon: Layers,
-  },
-  {
-    label: "可充值账户",
-    value: "3 个",
-    icon: CheckCircle2,
-  },
-  {
-    label: "账户总余额",
-    value: "¥487,000.00",
-    icon: Wallet,
-  },
-  {
-    label: "最近更新时间",
-    value: "2026-07-10 14:32",
-    icon: Clock4,
-  },
-];
 
 const balanceBreakdown = [
   { account: "云岚品牌中心", amount: "¥286,500.00" },
@@ -979,6 +971,22 @@ function AccountOverview({ onRecharge, onAddAccount, onViewLedger, onViewDetail 
   onViewLedger: (account: typeof accounts[0]) => void;
   onViewDetail: (account: typeof accounts[0]) => void;
 }) {
+  const approvedAccounts = accounts.filter(a => a.status === "正常");
+  const totalBalance = approvedAccounts.reduce((sum, a) => {
+    const val = parseFloat(a.balance.replace(/[^0-9.]/g, ""));
+    return sum + (isNaN(val) ? 0 : val);
+  }, 0);
+  const latestUpdate = approvedAccounts.reduce((latest, a) => {
+    return a.updatedAt > latest ? a.updatedAt : latest;
+  }, "");
+
+  const accountSummary = [
+    { label: "已绑定账户", value: `${approvedAccounts.length} 个`, icon: Layers },
+    { label: "可充值账户", value: `${approvedAccounts.length} 个`, icon: CheckCircle2 },
+    { label: "账户总余额", value: `¥${totalBalance.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Wallet },
+    { label: "最近更新时间", value: latestUpdate || "—", icon: Clock4 },
+  ];
+
   return (
     <Card className="border-border/60 shadow-sm">
       {/* ── Header ─────────────────────────────────────── */}
@@ -1046,8 +1054,10 @@ function AccountOverview({ onRecharge, onAddAccount, onViewLedger, onViewDetail 
               {accounts.map((account) => {
                 const statusCfg = accountStatusMap[account.status] ?? accountStatusMap["正常"];
                 const isAbnormal = account.status === "异常" || account.status === "不可充值";
-                const isPending = account.status === "审核中";
-                const canRecharge = !isAbnormal && !isPending;
+                const isPendingReview = account.status === "待审核";
+                const isRejected = account.status === "审核驳回";
+                const isUnderReview = isPendingReview || isRejected;
+                const canRecharge = !isAbnormal && !isUnderReview;
                 return (
                   <TableRow key={account.accountId} className="align-middle">
                     {/* 账户信息 */}
@@ -1064,56 +1074,106 @@ function AccountOverview({ onRecharge, onAddAccount, onViewLedger, onViewDetail 
                         <p className="text-[11px] text-muted-foreground">主体：{account.subject}</p>
                       </div>
                     </TableCell>
-                    {/* 资金情况 — 三行紧凑 */}
+                    {/* 资金情况 — 待审核/驳回时显示"米播审核中" */}
                     <TableCell className="py-2.5">
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs text-muted-foreground">当前余额</span>
-                          <span className="text-sm font-bold text-foreground">{account.balance}</span>
+                      {isUnderReview ? (
+                        <div className="flex items-center justify-center py-4">
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Clock4 className="h-4 w-4" />
+                            <span className="text-sm font-medium">米播审核中</span>
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs text-muted-foreground">本月充值</span>
-                          <span className="text-sm font-medium text-emerald-600">{account.monthlyRecharge}</span>
+                      ) : (
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-muted-foreground">当前余额</span>
+                            <span className="text-sm font-bold text-foreground">{account.balance}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-muted-foreground">本月充值</span>
+                            <span className="text-sm font-medium text-emerald-600">{account.monthlyRecharge}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-muted-foreground">本月消耗</span>
+                            <span className="text-sm font-medium text-amber-600">{account.monthlySpend}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs text-muted-foreground">本月消耗</span>
-                          <span className="text-sm font-medium text-amber-600">{account.monthlySpend}</span>
-                        </div>
-                      </div>
+                      )}
                     </TableCell>
                     {/* 账户状态 */}
                     <TableCell className="whitespace-nowrap">
                       <Badge variant={statusCfg.variant} className={`gap-1 text-xs ${statusCfg.className}`}>
                         {account.status === "正常" && <CheckCircle2 className="h-3 w-3" />}
-                        {account.status === "审核中" && <Clock4 className="h-3 w-3" />}
+                        {account.status === "待审核" && <Clock4 className="h-3 w-3" />}
+                        {account.status === "审核驳回" && <XCircle className="h-3 w-3" />}
                         {account.status === "异常" && <ShieldAlert className="h-3 w-3" />}
                         {account.status === "不可充值" && <Ban className="h-3 w-3" />}
                         {statusCfg.label}
                       </Badge>
                     </TableCell>
                     {/* 余额更新时间 */}
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{account.updatedAt}</TableCell>
+                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                      {isUnderReview ? "米播审核中" : account.updatedAt}
+                    </TableCell>
                     {/* 操作 */}
                     <TableCell className="py-1.5">
                       <div className="flex flex-col gap-1">
+                        {/* 发起充值 */}
                         {canRecharge ? (
                           <Button variant="outline" size="sm" onClick={onRecharge} className="h-7 border-primary/30 bg-sapphire-subtle text-xs text-primary hover:bg-sapphire-muted w-full justify-center">
                             <Wallet className="mr-1 h-3 w-3" />发起充值
                           </Button>
+                        ) : isUnderReview ? (
+                          <div className="group relative w-full">
+                            <Button variant="ghost" size="sm" disabled className="h-7 text-xs text-muted-foreground w-full justify-center">发起充值</Button>
+                            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">
+                              当前账户正在米播审核中，审核通过后方可操作。
+                            </span>
+                          </div>
                         ) : (
                           <div className="group relative w-full">
                             <Button variant="ghost" size="sm" disabled className="h-7 text-xs text-muted-foreground w-full justify-center">发起充值</Button>
                             <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">
-                              {isPending ? "账户审核通过后可发起充值" : "当前账户暂不可充值，请查看详情"}
+                              当前账户暂不可充值，请查看详情
                             </span>
                           </div>
                         )}
-                        <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground w-full justify-center" onClick={() => onViewLedger(account)}>
-                          <FileText className="mr-1 h-3 w-3" />查看流水
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground w-full justify-center" onClick={() => onViewDetail(account)}>
-                          <Eye className="mr-1 h-3 w-3" />详情
-                        </Button>
+                        {/* 查看流水 */}
+                        {isUnderReview ? (
+                          <div className="group relative w-full">
+                            <Button variant="ghost" size="sm" disabled className="h-7 text-xs text-muted-foreground w-full justify-center">
+                              <FileText className="mr-1 h-3 w-3" />查看流水
+                            </Button>
+                            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">
+                              当前账户正在米播审核中，审核通过后方可操作。
+                            </span>
+                          </div>
+                        ) : (
+                          <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground w-full justify-center" onClick={() => onViewLedger(account)}>
+                            <FileText className="mr-1 h-3 w-3" />查看流水
+                          </Button>
+                        )}
+                        {/* 详情 */}
+                        {isUnderReview ? (
+                          <div className="group relative w-full">
+                            <Button variant="ghost" size="sm" disabled className="h-7 text-xs text-muted-foreground w-full justify-center">
+                              <Eye className="mr-1 h-3 w-3" />详情
+                            </Button>
+                            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">
+                              当前账户正在米播审核中，审核通过后方可操作。
+                            </span>
+                          </div>
+                        ) : (
+                          <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground w-full justify-center" onClick={() => onViewDetail(account)}>
+                            <Eye className="mr-1 h-3 w-3" />详情
+                          </Button>
+                        )}
+                        {/* 修改并重新提交 — 仅审核驳回时显示 */}
+                        {isRejected && (
+                          <Button variant="outline" size="sm" className="h-7 border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 text-xs w-full justify-center" onClick={onAddAccount}>
+                            <RefreshCw className="mr-1 h-3 w-3" />修改并重新提交
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
