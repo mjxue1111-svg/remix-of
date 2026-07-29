@@ -381,8 +381,6 @@ function AccountInfoPage() {
     return phone.slice(0, 3) + "****" + phone.slice(-3);
   };
 
-  const hasPendingRequest = modificationRequest !== null && modificationRequest.status === "pending_review";
-
   return (
     <div className="w-full space-y-5 p-6">
       {/* Header */}
@@ -408,7 +406,7 @@ function AccountInfoPage() {
                 <User className="h-4 w-4 text-primary" />账号与联系人信息
               </CardTitle>
               <CardDescription>
-                该信息用于登录米播充值平台客户端、接收充值流程通知及账号安全验证。绑定手机号修改后需提交米播审核，审核通过后生效。
+                该信息用于登录米播充值平台客户端、接收充值流程通知及账号安全验证。
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -416,13 +414,7 @@ function AccountInfoPage() {
                 variant="outline"
                 size="sm"
                 className="gap-1.5"
-                onClick={() => {
-                  if (hasPendingRequest) {
-                    toast.error("当前存在待审核的修改申请，请等待审核完成后再提交新的申请。");
-                    return;
-                  }
-                  setEditContactOpen(true);
-                }}
+                onClick={() => setEditContactOpen(true)}
               >
                 <Pencil className="h-3.5 w-3.5" />修改个人信息
               </Button>
@@ -561,20 +553,15 @@ function AccountInfoPage() {
           onOpenChange={setEditContactOpen}
           contactData={contactData}
           onSubmit={(newPhone, name, phone, email, reason) => {
-            const now = new Date();
-            const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-            const req: ModificationRequest = {
-              id: `MOD-${now.getFullYear()}-${String(Math.floor(Math.random() * 90000) + 10000)}`,
-              status: "pending_review",
-              newPhone: newPhone,
+            setContactData(prev => ({
+              ...prev,
+              phone: newPhone || prev.phone,
+              maskedPhone: newPhone ? maskPhone(newPhone) : prev.maskedPhone,
               contactName: name,
               contactPhone: phone,
               contactEmail: email,
-              reason,
-              submittedAt: ts,
-            };
-            setModificationRequest(req);
-            toast.success("修改申请已提交，请等待米播审核。");
+            }));
+            toast.success("个人信息修改成功");
           }}
         />
       )}
@@ -660,6 +647,7 @@ function EditContactModal({
   onOpenChange: (open: boolean) => void;
   contactData: {
     maskedPhone: string;
+    phone: string;
     contactName: string;
     contactPhone: string;
     contactEmail: string;
@@ -672,11 +660,94 @@ function EditContactModal({
   const [contactEmail, setContactEmail] = useState(contactData.contactEmail);
   const [reason, setReason] = useState("");
 
-  const isFormValid = contactName.trim() !== "" && contactPhone.trim() !== "" && reason.trim() !== "";
-  const phoneChanged = newPhone.trim() !== "" && newPhone.trim() !== contactData.contactPhone;
+  // SMS verification
+  const [smsCode, setSmsCode] = useState("");
+  const [smsCountdown, setSmsCountdown] = useState(0);
+  const [smsSent, setSmsSent] = useState(false);
+  const [smsVerified, setSmsVerified] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
+
+  // Validate phone number
+  const validatePhone = (phone: string): string | null => {
+    if (!phone.trim()) return null;
+    if (!/^1[3-9]\d{9}$/.test(phone.trim())) return "请输入正确的中国大陆手机号";
+    if (phone.trim() === contactData.phone) return "新手机号不能与当前绑定手机号相同";
+    return null;
+  };
+
+  // Derived
+  const phoneChanged = newPhone.trim() !== "" && newPhone.trim() !== contactData.phone;
+  const canSendSms = phoneChanged && !validatePhone(newPhone) && smsCountdown === 0;
+  const isFormValid =
+    contactName.trim() !== "" &&
+    contactPhone.trim() !== "" &&
+    reason.trim() !== "" &&
+    (!phoneChanged || smsVerified);
+
+  // SMS countdown timer
+  const startCountdown = () => {
+    setSmsCountdown(60);
+    const interval = setInterval(() => {
+      setSmsCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleSendSms = () => {
+    const err = validatePhone(newPhone);
+    if (err) {
+      setPhoneError(err);
+      toast.error(err);
+      return;
+    }
+    setPhoneError("");
+    setSmsSent(true);
+    setSmsVerified(false);
+    setSmsCode("");
+    startCountdown();
+    toast.success(`验证码已发送至当前绑定手机号：${contactData.maskedPhone}，有效期 5 分钟。`);
+  };
+
+  const handleVerifySms = (code: string) => {
+    setSmsCode(code);
+    if (code.length === 6 && code === "123456") {
+      setSmsVerified(true);
+    } else if (code.length === 6 && code !== "123456") {
+      setSmsVerified(false);
+      toast.error("验证码错误，请重新输入");
+      setSmsCode("");
+    } else {
+      setSmsVerified(false);
+    }
+  };
+
+  const handlePhoneChange = (value: string) => {
+    // Only allow digits
+    const digits = value.replace(/\D/g, "").slice(0, 11);
+    setNewPhone(digits);
+    setPhoneError("");
+    // Reset SMS state when phone changes
+    if (digits !== newPhone) {
+      setSmsCode("");
+      setSmsVerified(false);
+      setSmsSent(false);
+    }
+  };
 
   const handleSubmit = () => {
     if (!isFormValid) return;
+
+    // Validate phone if changed
+    if (phoneChanged && !smsVerified) {
+      toast.error("请先完成短信验证码验证");
+      return;
+    }
+
     onSubmit(newPhone.trim(), contactName.trim(), contactPhone.trim(), contactEmail.trim(), reason.trim());
     onOpenChange(false);
   };
@@ -689,7 +760,7 @@ function EditContactModal({
         <div className="flex items-start justify-between border-b border-border px-6 py-5">
           <div className="space-y-0.5">
             <h2 className="text-lg font-semibold text-foreground">修改个人信息</h2>
-            <p className="text-xs text-muted-foreground">修改绑定手机号、联系人信息后需提交米播审核，审核通过后生效。</p>
+            <p className="text-xs text-muted-foreground">修改联系人信息；如需更换绑定手机号，请完成短信验证码验证。</p>
           </div>
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => onOpenChange(false)}>
             <X className="h-4 w-4" />
@@ -702,27 +773,62 @@ function EditContactModal({
           <div className="space-y-1.5">
             <Label>当前绑定手机号 <span className="text-destructive">*</span></Label>
             <Input value={contactData.maskedPhone} disabled className="bg-muted/50 text-muted-foreground" />
-            <p className="text-[11px] text-muted-foreground">当前绑定的手机号，用于登录和安全验证，不可直接编辑</p>
+            <p className="text-[11px] text-muted-foreground">当前绑定的手机号，用于登录和安全验证，不可直接编辑。</p>
           </div>
 
           {/* New phone */}
           <div className="space-y-1.5">
-            <Label>新绑定手机号</Label>
+            <Label>新绑定手机号 <span className="text-destructive">*</span></Label>
             <Input
               type="tel"
-              placeholder="如需修改绑定手机号请填写新手机号"
+              placeholder="请输入新的绑定手机号"
               value={newPhone}
-              onChange={(e) => setNewPhone(e.target.value)}
-              className="h-10"
+              onChange={(e) => handlePhoneChange(e.target.value)}
+              maxLength={11}
+              className={`h-10 ${phoneError ? "border-destructive" : ""}`}
             />
-            <p className="text-[11px] text-muted-foreground">留空则不修改绑定手机号；填写后需提交米播审核，审核通过后生效</p>
-            {phoneChanged && (
-              <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
-                <p className="text-xs text-amber-700">修改绑定手机号需提交米播审核，审核通过前仍使用原手机号登录。</p>
-              </div>
+            {phoneError && (
+              <p className="text-[11px] text-destructive">{phoneError}</p>
             )}
           </div>
+
+          {/* SMS verification — only when new phone is filled */}
+          {phoneChanged && (
+            <div className="space-y-1.5">
+              <Label>验证码 <span className="text-destructive">*</span></Label>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    type="text"
+                    placeholder="请输入6位验证码"
+                    value={smsCode}
+                    onChange={(e) => handleVerifySms(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    maxLength={6}
+                    disabled={smsVerified}
+                    className={`h-10 font-mono tracking-widest ${
+                      smsVerified ? "border-emerald-300 bg-emerald-50 text-emerald-700 pr-8" : ""
+                    }`}
+                  />
+                  {smsVerified && (
+                    <CheckCircle2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  disabled={!canSendSms}
+                  onClick={handleSendSms}
+                  className="h-10 shrink-0 text-xs w-[120px]"
+                >
+                  {smsCountdown > 0 ? `${smsCountdown}s 后重新获取` : "获取验证码"}
+                </Button>
+              </div>
+              {smsSent && (
+                <p className="text-[11px] text-muted-foreground">
+                  验证码已发送至当前绑定手机号：{contactData.maskedPhone}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Contact name */}
           <div className="space-y-1.5">
@@ -763,7 +869,7 @@ function EditContactModal({
           <div className="space-y-1.5">
             <Label>修改原因 <span className="text-destructive">*</span></Label>
             <Textarea
-              placeholder="请说明本次修改个人信息的原因，便于米播审核"
+              placeholder="请说明本次修改个人信息的原因"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               className="min-h-[80px] resize-none"
@@ -774,7 +880,7 @@ function EditContactModal({
         {/* Footer */}
         <div className="flex items-center gap-3 border-t border-border px-6 py-4">
           <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>取消</Button>
-          <Button className="flex-1" disabled={!isFormValid} onClick={handleSubmit}>提交修改申请</Button>
+          <Button className="flex-1" disabled={!isFormValid} onClick={handleSubmit}>确认修改</Button>
         </div>
       </div>
     </div>
