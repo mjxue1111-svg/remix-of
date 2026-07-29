@@ -126,10 +126,232 @@ function InfoCell({ label, value, mono }: { label: string; value: string | React
   );
 }
 
+// ── Bank account formatting ────────────────────────────────────────────────
+
+function formatBankAccount(value: string): string {
+  const digits = value.replace(/\s/g, "");
+  if (digits.length <= 4) return digits;
+  const groups: string[] = [];
+  for (let i = 0; i < digits.length; i += 4) {
+    groups.push(digits.slice(i, i + 4));
+  }
+  return groups.join(" ");
+}
+
+// ── Mock company database ──────────────────────────────────────────────────
+
+const companyDb: Record<string, { creditCode: string; status: string }> = {
+  "上海云岚科技有限公司": { creditCode: "91310115MACJ6K1C8A", status: "存续" },
+  "北京星辰互动传媒有限公司": { creditCode: "91110108MA7YH3K2B9", status: "存续" },
+  "杭州启明信息技术有限公司": { creditCode: "91330100MA2KJ8P3D5", status: "存续" },
+};
+
+// ── EntityInfoCard ──────────────────────────────────────────────────────────
+
+function EntityInfoCard() {
+  const [editing, setEditing] = useState(false);
+
+  const [companyName, setCompanyName] = useState("上海云岚科技有限公司");
+  const [creditCode, setCreditCode] = useState("91310115MACJ6K1C8A");
+  const [companyStatus, setCompanyStatus] = useState("存续");
+  const [bankName, setBankName] = useState("招商银行股份有限公司上海张江支行");
+  const [bankAccount, setBankAccount] = useState("6225888899990001");
+  const [billingPhone, setBillingPhone] = useState("021-58886666");
+  const [billingAddress, setBillingAddress] = useState("上海市浦东新区张江高科技园区科苑路 88 号");
+
+  // Draft state for editing
+  const [draft, setDraft] = useState({
+    companyName: "",
+    creditCode: "",
+    bankName: "",
+    bankAccount: "",
+    billingPhone: "",
+    billingAddress: "",
+  });
+
+  const startEditing = () => {
+    setDraft({
+      companyName,
+      creditCode,
+      bankName,
+      bankAccount: bankAccount.replace(/\s/g, ""),
+      billingPhone,
+      billingAddress,
+    });
+    setEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setEditing(false);
+  };
+
+  const handleCompanyNameChange = (value: string) => {
+    setDraft((prev) => {
+      const match = companyDb[value];
+      return {
+        ...prev,
+        companyName: value,
+        creditCode: match ? match.creditCode : prev.creditCode,
+      };
+    });
+  };
+
+  const handleBankAccountChange = (value: string) => {
+    // Strip non-digits for storage
+    const digits = value.replace(/\D/g, "");
+    setDraft((prev) => ({ ...prev, bankAccount: digits }));
+  };
+
+  const saveEditing = () => {
+    if (!draft.companyName.trim() || !draft.bankName.trim() || !draft.bankAccount.trim()) {
+      toast.error("请填写必填字段");
+      return;
+    }
+    // Re-query credit code based on company name
+    const match = companyDb[draft.companyName.trim()];
+    setCompanyName(draft.companyName.trim());
+    setCreditCode(match ? match.creditCode : draft.creditCode);
+    setCompanyStatus(match ? match.status : companyStatus);
+    setBankName(draft.bankName.trim());
+    setBankAccount(draft.bankAccount.trim());
+    setBillingPhone(draft.billingPhone.trim() || "");
+    setBillingAddress(draft.billingAddress.trim() || "");
+    setEditing(false);
+    toast.success("信息已保存");
+  };
+
+  return (
+    <Card className="border-border/60 shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-primary" />客户主体信息
+            </CardTitle>
+            <CardDescription>管理企业的工商注册信息与财务收款信息。</CardDescription>
+          </div>
+          {!editing ? (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={startEditing}>
+              <Pencil className="h-3.5 w-3.5" />编辑
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={cancelEditing}>取消</Button>
+              <Button size="sm" onClick={saveEditing}>保存</Button>
+            </div>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* ── 工商信息 ──────────────────────────────── */}
+        <div>
+          <SectionTitle>工商信息</SectionTitle>
+          {editing ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>客户主体名称 <span className="text-destructive">*</span></Label>
+                <Input
+                  placeholder="请输入或选择客户主体名称"
+                  value={draft.companyName}
+                  onChange={(e) => handleCompanyNameChange(e.target.value)}
+                  list="company-list"
+                />
+                <datalist id="company-list">
+                  {Object.keys(companyDb).map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
+              </div>
+              <div className="space-y-1.5">
+                <Label>统一社会信用代码</Label>
+                <Input value={draft.creditCode} disabled className="bg-muted/50 text-muted-foreground" />
+              </div>
+            </div>
+          ) : (
+            <DescTable
+              rows={[
+                [
+                  { label: "客户主体名称", value: companyName },
+                  { label: "统一社会信用代码", value: creditCode || "—", mono: true },
+                ],
+                [
+                  {
+                    label: "企业状态",
+                    value: companyStatus ? (
+                      <Badge className="gap-1 border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
+                        <CheckCircle2 className="h-3 w-3" />{companyStatus}
+                      </Badge>
+                    ) : "—",
+                  },
+                  { label: "——", value: "——" },
+                ],
+              ]}
+            />
+          )}
+        </div>
+
+        {/* ── 财务信息 ──────────────────────────────── */}
+        <div>
+          <SectionTitle>财务信息</SectionTitle>
+          {editing ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>开户银行 <span className="text-destructive">*</span></Label>
+                <Input
+                  placeholder="请输入开户银行"
+                  value={draft.bankName}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, bankName: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>银行账户 <span className="text-destructive">*</span></Label>
+                <Input
+                  placeholder="请输入银行账户"
+                  value={formatBankAccount(draft.bankAccount)}
+                  onChange={(e) => handleBankAccountChange(e.target.value)}
+                  className="font-mono"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>开票电话</Label>
+                <Input
+                  placeholder="请输入开票电话"
+                  value={draft.billingPhone}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, billingPhone: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>开票地址</Label>
+                <Input
+                  placeholder="请输入开票地址"
+                  value={draft.billingAddress}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, billingAddress: e.target.value }))}
+                />
+              </div>
+            </div>
+          ) : (
+            <DescTable
+              rows={[
+                [
+                  { label: "开户银行", value: bankName || "—" },
+                  { label: "银行账户", value: bankAccount ? formatBankAccount(bankAccount) : "—", mono: true },
+                ],
+                [
+                  { label: "开票电话", value: billingPhone || "—" },
+                  { label: "开票地址", value: billingAddress || "—" },
+                ],
+              ]}
+            />
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 function AccountInfoPage() {
-  const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [editContactOpen, setEditContactOpen] = useState(false);
   const [changePwdOpen, setChangePwdOpen] = useState(false);
   const [addAccountOpen, setAddAccountOpen] = useState(false);
@@ -174,77 +396,8 @@ function AccountInfoPage() {
         </Button>
       </div>
 
-      {/* ── Module 1: Customer Entity Info ───────────────── */}
-      <Card className="border-border/60 shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-primary" />客户主体信息
-              </CardTitle>
-              <CardDescription>展示当前客户在米播系统中的主体资料、开票信息及账户基础信息。</CardDescription>
-            </div>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditProfileOpen(true)}>
-              <Pencil className="h-3.5 w-3.5" />编辑
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div>
-            <SectionTitle>基本信息</SectionTitle>
-            <DescTable
-              rows={[
-                [
-                  { label: "企业名称", value: "上海云岚科技有限公司" },
-                  { label: "企业简称", value: "云岚科技" },
-                ],
-                [
-                  { label: "英文名称", value: "Shanghai Yunlan Technology Co., Ltd." },
-                  { label: "统一社会信用代码", value: "91310115MACJ6K1C8A", mono: true },
-                ],
-                [
-                  { label: "注册号", value: "310115004861028", mono: true },
-                  { label: "组织机构代码", value: "MACJ6K1C-8", mono: true },
-                ],
-                [
-                  { label: "纳税人识别号", value: "91310115MACJ6K1C8A", mono: true },
-                  {
-                    label: "企业状态",
-                    value: (
-                      <Badge className="gap-1 border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
-                        <CheckCircle2 className="h-3 w-3" />在营（开业）
-                      </Badge>
-                    ),
-                  },
-                ],
-              ]}
-            />
-          </div>
-          <div>
-            <SectionTitle>发票 / 支票信息</SectionTitle>
-            <DescTable
-              rows={[
-                [
-                  { label: "发票抬头", value: "上海云岚科技有限公司" },
-                  { label: "纳税人类型", value: "增值税一般纳税人" },
-                ],
-                [
-                  { label: "发票类型", value: "增值税专用发票" },
-                  { label: "开户银行", value: "招商银行股份有限公司上海张江支行" },
-                ],
-                [
-                  { label: "银行账户", value: "6225 **** **** 0001", mono: true },
-                  { label: "开票电话", value: "021-58886666" },
-                ],
-                [
-                  { label: "开票地址", value: "上海市浦东新区张江高科技园区科苑路 88 号" },
-                  { label: "备注", value: "默认开票信息" },
-                ],
-              ]}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* ── Module 1: Business & Financial Info ───────────── */}
+      <EntityInfoCard />
 
       {/* ── Module 2: Account & Contact Info ─────────────── */}
       <Card className="border-border/60 shadow-sm">
@@ -400,48 +553,6 @@ function AccountInfoPage() {
       </Card>
 
       {/* ═══════════════ Modals ═══════════════ */}
-
-      {/* Edit Customer Profile — Module 1 */}
-      {editProfileOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setEditProfileOpen(false)} />
-          <div className="relative z-10 w-full max-w-[520px] rounded-2xl border border-border bg-background shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <h2 className="text-lg font-semibold text-foreground">编辑客户主体信息</h2>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setEditProfileOpen(false)}>
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
-              </Button>
-            </div>
-            <div className="max-h-[65vh] overflow-y-auto space-y-4 px-6 py-5">
-              <div className="rounded-lg bg-muted/30 p-3 text-xs text-muted-foreground">
-                主体认证信息如需修改，请联系米播商务处理。
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5"><Label>企业名称</Label><Input value="上海云岚科技有限公司" disabled className="bg-muted/50" /></div>
-                <div className="space-y-1.5"><Label>统一社会信用代码</Label><Input value="91310115MACJ6K1C8A" disabled className="bg-muted/50" /></div>
-                <div className="space-y-1.5"><Label>企业简称</Label><Input defaultValue="云岚科技" /></div>
-                <div className="space-y-1.5"><Label>英文名称</Label><Input defaultValue="Shanghai Yunlan Technology Co., Ltd." /></div>
-                <div className="space-y-1.5">
-                  <Label>纳税人类型</Label>
-                  <Select defaultValue="general"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="general">增值税一般纳税人</SelectItem><SelectItem value="small">小规模纳税人</SelectItem></SelectContent></Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>发票类型</Label>
-                  <Select defaultValue="special"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="special">增值税专用发票</SelectItem><SelectItem value="normal">增值税普通发票</SelectItem></SelectContent></Select>
-                </div>
-                <div className="space-y-1.5"><Label>开户银行</Label><Input defaultValue="招商银行股份有限公司上海张江支行" /></div>
-                <div className="space-y-1.5"><Label>银行账户</Label><Input defaultValue="6225888899990001" /></div>
-                <div className="space-y-1.5"><Label>开票电话</Label><Input defaultValue="021-58886666" /></div>
-                <div className="space-y-1.5 col-span-2"><Label>开票地址</Label><Input defaultValue="上海市浦东新区张江高科技园区科苑路 88 号" /></div>
-              </div>
-              <div className="flex items-center gap-2 pt-2">
-                <Button variant="outline" className="flex-1" onClick={() => setEditProfileOpen(false)}>取消</Button>
-                <Button className="flex-1" onClick={() => setEditProfileOpen(false)}>保存修改</Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Edit Contact Info — Module 2 */}
       {editContactOpen && (
