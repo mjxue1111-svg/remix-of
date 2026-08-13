@@ -31,7 +31,7 @@ export default defineConfig({
       ],
     },
     optimizeDeps: {
-      exclude: ["@douyinfe/semi-ui", "@douyinfe/semi-icons"],
+      include: ["@douyinfe/semi-ui", "@douyinfe/semi-icons"],
     },
   },
 });
