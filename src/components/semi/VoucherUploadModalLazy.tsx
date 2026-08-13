@@ -29,19 +29,11 @@ interface Props {
 }
 
 export function VoucherUploadModalLazy(props: Props) {
-  // eslint-disable-next-line no-console
-  console.log("VoucherUploadModalLazy: render", props);
   const [Modal, setModal] = useState<React.ComponentType<Props> | null>(null);
 
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log("VoucherUploadModalLazy: starting dynamic import");
     import("./VoucherUploadModal")
-      .then((mod) => {
-        // eslint-disable-next-line no-console
-        console.log("VoucherUploadModalLazy: loaded module", Object.keys(mod));
-        setModal(() => mod.VoucherUploadModal);
-      })
+      .then((mod) => setModal(() => mod.VoucherUploadModal))
       .catch((err) => {
         // eslint-disable-next-line no-console
         console.error("Failed to load VoucherUploadModal:", err);
@@ -49,7 +41,7 @@ export function VoucherUploadModalLazy(props: Props) {
   }, []);
 
   return (
-    <ClientOnly>
+    <ClientOnly fallback={null}>
       {Modal ? <Modal {...props} /> : null}
     </ClientOnly>
   );
