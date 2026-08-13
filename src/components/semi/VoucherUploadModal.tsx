@@ -150,7 +150,7 @@ export function VoucherUploadModal({ open, onOpenChange, task }: VoucherUploadMo
     Toast.success("付款凭证草稿已保存");
   };
 
-  const handleFileSelect = (props: { file: File; fileList: File[] }) => {
+  const handleFileSelect = (props: any) => {
     const file = props.file as File;
     if (!file) return false;
     if (file.size > MAX_FILE_SIZE) {
