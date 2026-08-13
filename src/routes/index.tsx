@@ -39,6 +39,7 @@ import { TaskDetailDrawer, type DetailTaskInfo } from "@/components/TaskDetailDr
 import { UploadPaymentModal, type PaymentTaskInfo, type UploadMode } from "@/components/UploadPaymentModal";
 import { VoucherUploadModalLazy, type SpecialPaymentTaskInfo } from "@/components/semi/VoucherUploadModalLazy";
 import { CancelOrderModal, type CancelTaskInfo } from "@/components/CancelOrderModal";
+import { RefundRequestModal, type RefundTaskInfo } from "@/components/RefundRequestModal";
 import { ReuploadRejectedModal, type ReuploadRejectedTaskInfo } from "@/components/ReuploadRejectedModal";
 import { AccountLedgerDrawer, type LedgerAccountInfo } from "@/components/AccountLedgerDrawer";
 import { AccountDetailDrawer, type DetailAccountInfo } from "@/components/AccountDetailDrawer";
@@ -120,7 +121,7 @@ const nodeStatusMap: Record<string, { label: string; className: string; icon: Re
   finance_confirm: { label: "米播进行账户充值中", className: "border-sky-200 bg-sky-50 text-sky-700", icon: <RefreshCw className="h-3 w-3" /> },
   transferring: { label: "米播进行账户充值中", className: "border-primary/30 bg-primary/10 text-primary", icon: <RefreshCw className="h-3 w-3" /> },
   completed: { label: "已完成", className: "border-emerald-200 bg-emerald-50 text-emerald-700", icon: <CheckCircle2 className="h-3 w-3" /> },
-  transfer_error: { label: "异常", className: "border-red-200 bg-red-50 text-red-700", icon: <ShieldAlert className="h-3 w-3" /> },
+  transfer_error: { label: "充值失败", className: "border-red-200 bg-red-50 text-red-700", icon: <ShieldAlert className="h-3 w-3" /> },
   // Special recharge nodes
   sp_submitted: { label: "米播评估中", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Clock className="h-3 w-3" /> },
   sp_evaluating: { label: "米播评估中", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Zap className="h-3 w-3" /> },
@@ -209,7 +210,7 @@ function getRejectHoverTip(task: Task): string {
     return "特批申请已驳回，请查看原因";
   }
   if (task.node === "transfer_error") {
-    return "账户信息未通过，请重新确认";
+    return "充值处理失败，可申请退款";
   }
   return "已驳回";
 }
@@ -274,6 +275,11 @@ function canCancelOrder(task: Task): boolean {
   if (task.step >= 3 && task.rechargeType === "special") return false; // approved or beyond
   if (isInAudit(task) && task.rechargeType === "regular" && task.step >= 3) return false;
   return true;
+}
+
+// 仅"充值失败"（transfer_error）状态的订单可申请退款：常规充值第 3 步、特批充值第 4 步执行充值时失败
+function canRefund(task: Task): boolean {
+  return !task.isDraft && task.node === "transfer_error";
 }
 
 function getStepTooltip(task: Task, index: number, isSpecial: boolean): string {
@@ -342,13 +348,21 @@ const tasks: Task[] = [
     handler: "—", statusDescription: "充值已完成，等待客户按承诺时间付款并上传凭证",
     step: 5, totalSteps: 5, time: "2026-07-08 18:30", purpose: "广告投放", orderCompleted: false,
   },
+  // Row 3: Regular, transfer failed at step 3 → 充值失败，可申请退款
+  {
+    id: "RC-2026-07020", account: "云岚内容增长", accountType: "运营账户", accountId: "ST-10086103", subject: "上海云岚科技有限公司",
+    amount: "¥60,000.00", payableAmount: "¥58,800.00", discount: "98 折",
+    node: "transfer_error", rechargeType: "regular",
+    handler: "米播平台媒介", statusDescription: "充值处理失败，可申请退款",
+    step: 3, totalSteps: 4, time: "2026-07-09 10:20", purpose: "达人采买", orderCompleted: false,
+  },
 ];
 
 const taskSummary = [
   { label: "进行中任务", value: "5 笔", icon: ListTodo, accent: "bg-blue-50 text-blue-600" },
   { label: "待处理任务", value: "2 笔", icon: Zap, accent: "bg-amber-50 text-amber-600" },
   { label: "本月充值总额", value: "¥380,000.00", icon: TrendingUp, accent: "bg-emerald-50 text-emerald-600" },
-  { label: "异常任务", value: "0 笔", icon: CheckCircle2, accent: "bg-gray-50 text-gray-400" },
+  { label: "异常任务", value: "1 笔", icon: ShieldAlert, accent: "bg-red-50 text-red-600" },
 ];
 
 const accounts = [
@@ -709,6 +723,7 @@ function RechargeTasks({
   onCancelOrder,
   onContinueSubmit,
   onSpecialPayment,
+  onRefundRequest,
 }: {
   onViewDetail: (task: Task) => void;
   onUploadPayment: (task: Task, mode: UploadMode) => void;
@@ -716,6 +731,7 @@ function RechargeTasks({
   onCancelOrder: (task: Task) => void;
   onContinueSubmit: (task: Task) => void;
   onSpecialPayment: (task: Task) => void;
+  onRefundRequest: (task: Task) => void;
 }) {
   return (
     <Card className="border-border/60 shadow-sm">
@@ -929,11 +945,29 @@ function RechargeTasks({
                             </div>
                           )
                         )}
-                        {/* Row 3: 查看详情 */}
+                        {/* Row 3: 退款申请 — only for 充值失败 (transfer_error) */}
+                        {!task.isDraft && (
+                          canRefund(task) ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 gap-1 text-xs w-full justify-center border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                              onClick={() => onRefundRequest(task)}
+                            >
+                              退款申请
+                            </Button>
+                          ) : (
+                            <div className="group relative">
+                              <Button size="sm" variant="ghost" disabled className="h-7 gap-1 text-xs w-full justify-center">退款申请</Button>
+                              <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">仅充值失败状态可申请退款</span>
+                            </div>
+                          )
+                        )}
+                        {/* Row 4: 查看详情 */}
                         <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground w-full justify-center" onClick={() => onViewDetail(task)}>
                           <Eye className="h-3 w-3" />查看详情
                         </Button>
-                        {/* Row 4: … more */}
+                        {/* Row 5: … more */}
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground w-full justify-center tracking-widest">…</Button>
@@ -1202,6 +1236,8 @@ function Index() {
   const [reuploadTask, setReuploadTask] = useState<ReuploadRejectedTaskInfo | null>(null);
   const [cancelOrderOpen, setCancelOrderOpen] = useState(false);
   const [cancelTask, setCancelTask] = useState<Task | null>(null);
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [refundTask, setRefundTask] = useState<Task | null>(null);
   const [ledgerOpen, setLedgerOpen] = useState(false);
   const [ledgerAccount, setLedgerAccount] = useState<typeof accounts[0] | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -1263,6 +1299,16 @@ function Index() {
     setCancelTask(task);
     setCancelOrderOpen(true);
   }, []);
+
+  const handleRefundRequest = useCallback((task: Task) => {
+    setRefundTask(task);
+    setRefundOpen(true);
+  }, []);
+
+  const buildRefundTaskInfo = (t: Task | null): RefundTaskInfo | null => {
+    if (!t) return null;
+    return { id: t.id };
+  };
 
   const handleViewLedger = useCallback((account: typeof accounts[0]) => {
     setLedgerAccount(account);
@@ -1327,7 +1373,7 @@ function Index() {
       <WelcomeSection onRecharge={handleRecharge} onAddAccount={handleAddAccount} />
       <StatsCards />
 
-      <RechargeTasks onViewDetail={handleViewDetail} onUploadPayment={handleUploadPayment} onRecharge={handleRecharge} onCancelOrder={handleCancelOrder} onContinueSubmit={handleContinueSubmit} onSpecialPayment={handleSpecialPayment} />
+      <RechargeTasks onViewDetail={handleViewDetail} onUploadPayment={handleUploadPayment} onRecharge={handleRecharge} onCancelOrder={handleCancelOrder} onContinueSubmit={handleContinueSubmit} onSpecialPayment={handleSpecialPayment} onRefundRequest={handleRefundRequest} />
 
       <AccountOverview onRecharge={handleRecharge} onAddAccount={handleAddAccount} onViewLedger={handleViewLedger} onViewDetail={handleViewAccountDetail} />
 
@@ -1375,6 +1421,12 @@ function Index() {
         open={cancelOrderOpen}
         onOpenChange={setCancelOrderOpen}
         task={buildCancelTaskInfo(cancelTask)}
+      />
+
+      <RefundRequestModal
+        open={refundOpen}
+        onOpenChange={setRefundOpen}
+        task={buildRefundTaskInfo(refundTask)}
       />
 
       <AccountLedgerDrawer

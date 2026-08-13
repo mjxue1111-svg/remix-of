@@ -15,10 +15,10 @@ import {
 import {
   Building2, User, ShieldCheck, Bell, UserCircle, BookOpen,
   Maximize, Minimize, Globe, Type, Lock, LogOut,
-  ChevronDown, Check, CheckCheck, PartyPopper, TrendingUp, AlertTriangle, Gift,
+  ChevronDown, Check, CheckCheck, PartyPopper, TrendingUp, AlertTriangle, Gift, Clock, XCircle,
 } from "lucide-react";
 
-type NotificationType = "success" | "finance" | "warning" | "reward";
+type NotificationType = "success" | "finance" | "warning" | "reward" | "pending" | "rejected";
 
 interface NotificationItem {
   id: string;
@@ -34,15 +34,33 @@ const notificationTypeStyle: Record<NotificationType, { icon: React.ReactNode; i
   finance: { icon: <TrendingUp className="h-4 w-4" />, iconBg: "bg-blue-500" },
   warning: { icon: <AlertTriangle className="h-4 w-4" />, iconBg: "bg-amber-500" },
   reward: { icon: <Gift className="h-4 w-4" />, iconBg: "bg-primary" },
+  pending: { icon: <Clock className="h-4 w-4" />, iconBg: "bg-sky-500" },
+  rejected: { icon: <XCircle className="h-4 w-4" />, iconBg: "bg-red-500" },
 };
 
 const initialNotifications: NotificationItem[] = [
+  {
+    id: "n0",
+    type: "pending",
+    title: "账户审核发起",
+    description: "您新增的星图账户「云岚直播推广」已发起审核，请耐心等候。",
+    time: "刚刚",
+    read: false,
+  },
   {
     id: "n1",
     type: "success",
     title: "账户审核通过",
     description: "您新增的星图账户「云岚直播推广」已审核通过，现已可正常发起充值。",
     time: "10 分钟前",
+    read: false,
+  },
+  {
+    id: "n1b",
+    type: "rejected",
+    title: "账户审核驳回",
+    description: "您新增的星图账户「云岚效果推广」被审核驳回，请重新提交材料新建账户。",
+    time: "1 小时前",
     read: false,
   },
   {

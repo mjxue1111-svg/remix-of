@@ -23,6 +23,7 @@ import { RechargeModal } from "@/components/RechargeModal";
 import { TaskDetailDrawer, type DetailTaskInfo } from "@/components/TaskDetailDrawer";
 import { UploadPaymentModal, type PaymentTaskInfo, type UploadMode } from "@/components/UploadPaymentModal";
 import { CancelOrderModal, type CancelTaskInfo } from "@/components/CancelOrderModal";
+import { RefundRequestModal, type RefundTaskInfo } from "@/components/RefundRequestModal";
 import { SpecialPaymentModal, type SpecialPaymentTaskInfo } from "@/components/SpecialPaymentModal";
 import { ReuploadRejectedModal, type ReuploadRejectedTaskInfo } from "@/components/ReuploadRejectedModal";
 
@@ -81,7 +82,7 @@ const nodeStatusMap: Record<string, { label: string; className: string; icon: Re
   finance_confirm: { label: "米播进行账户充值中", className: "border-sky-200 bg-sky-50 text-sky-700", icon: <RefreshCw className="h-3 w-3" /> },
   transferring: { label: "米播进行账户充值中", className: "border-primary/30 bg-primary/10 text-primary", icon: <RefreshCw className="h-3 w-3" /> },
   completed: { label: "已完成", className: "border-emerald-200 bg-emerald-50 text-emerald-700", icon: <CheckCircle2 className="h-3 w-3" /> },
-  transfer_error: { label: "异常", className: "border-red-200 bg-red-50 text-red-700", icon: <ShieldAlert className="h-3 w-3" /> },
+  transfer_error: { label: "充值失败", className: "border-red-200 bg-red-50 text-red-700", icon: <ShieldAlert className="h-3 w-3" /> },
   sp_submitted: { label: "米播评估中", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Clock className="h-3 w-3" /> },
   sp_evaluating: { label: "米播评估中", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Zap className="h-3 w-3" /> },
   sp_approved: { label: "特批处理中", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <CheckCircle2 className="h-3 w-3" /> },
@@ -120,6 +121,7 @@ const allTasks: Task[] = [
   { id: "RC-2026-07010", account: "云岚内容增长", accountId: "ST-10086103", subject: "上海云岚科技有限公司", accountType: "运营账户", amount: "¥80,000.00", payableAmount: "¥78,400.00", discount: "98 折", node: "completed", rechargeType: "regular", step: 4, totalSteps: 4, time: "2026-07-13 16:30", purpose: "助推投流", paymentReceipt: "回单_20260713.pdf", financeConfirmed: true, orderCompleted: true },
   { id: "RC-2026-07009", account: "云岚品牌中心", accountId: "ST-10086101", subject: "上海云岚科技有限公司", accountType: "主账户", amount: "¥50,000.00", payableAmount: "¥49,000.00", discount: "98 折", node: "finance_confirm", rechargeType: "regular", step: 3, totalSteps: 4, time: "2026-07-12 10:45", purpose: "达人采买", paymentReceipt: "回单_20260712.pdf", financeConfirmed: true, orderCompleted: false },
   { id: "RC-2026-07008", account: "云岚品牌中心", accountId: "ST-10086101", subject: "上海云岚科技有限公司", accountType: "主账户", amount: "¥30,000.00", payableAmount: "¥29,400.00", discount: "98 折", node: "audit_rejected", rechargeType: "regular", step: 2, totalSteps: 4, time: "2026-07-12 08:00", purpose: "其他", paymentReceipt: "回单_20260712.pdf", paymentStatus: "error", orderCompleted: false, paymentAmount: "¥29,400.00", paymentTime: "2026-07-12 08:00", paymentAccountName: "上海云岚科技有限公司", financeConfirmed: false, errorReason: "付款凭证不清晰，无法核对付款金额", errorDescription: "请重新上传清晰的银行回单，确保付款金额、收款方信息清晰可辨。" },
+  { id: "RC-2026-07021", account: "云岚内容增长", accountId: "ST-10086103", subject: "上海云岚科技有限公司", accountType: "运营账户", amount: "¥60,000.00", payableAmount: "¥58,800.00", discount: "98 折", node: "transfer_error", rechargeType: "regular", step: 3, totalSteps: 4, time: "2026-07-09 10:20", purpose: "达人采买", orderCompleted: false },
   // Draft — regular
   { id: "RC-2026-07006", account: "云岚品牌中心", accountId: "ST-10086101", subject: "上海云岚科技有限公司", accountType: "主账户", isDraft: true, amount: "¥100,000.00", payableAmount: "¥98,000.00", discount: "98 折", node: "draft", rechargeType: "regular", step: 0, totalSteps: 4, time: "2026-07-15 18:30", purpose: "达人采买", orderCompleted: false },
   // Special recharge — various states
@@ -166,7 +168,7 @@ function getRejectHoverTip(task: Task): string {
     return "特批申请已驳回，请查看原因";
   }
   if (task.node === "transfer_error") {
-    return "账户信息未通过，请重新确认";
+    return "充值处理失败，可申请退款";
   }
   return "已驳回";
 }
@@ -224,6 +226,11 @@ function canCancelOrder(task: Task): boolean {
   return true;
 }
 
+// 仅"充值失败"（transfer_error）状态的订单可申请退款：常规充值第 3 步、特批充值第 4 步执行充值时失败
+function canRefund(task: Task): boolean {
+  return !task.isDraft && task.node === "transfer_error";
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 function RechargePage() {
@@ -235,6 +242,8 @@ function RechargePage() {
   const [uploadMode, setUploadMode] = useState<UploadMode>("upload");
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelTask, setCancelTask] = useState<Task | null>(null);
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [refundTask, setRefundTask] = useState<Task | null>(null);
   const [specialPaymentOpen, setSpecialPaymentOpen] = useState(false);
   const [specialPaymentTask, setSpecialPaymentTask] = useState<SpecialPaymentTaskInfo | null>(null);
   const [reuploadOpen, setReuploadOpen] = useState(false);
@@ -337,6 +346,11 @@ function RechargePage() {
     if (!t) return null;
     const node = nodeStatusMap[t.node];
     return { id: t.id, rechargeType: t.rechargeType, account: t.account, amount: t.amount, payableAmount: t.payableAmount, nodeLabel: node?.label ?? "" };
+  };
+
+  const buildRefundTaskInfo = (t: Task | null): RefundTaskInfo | null => {
+    if (!t) return null;
+    return { id: t.id };
   };
 
   const handleUploadPayment = useCallback((task: Task, mode: UploadMode) => { setUploadTask(task); setUploadMode(mode); setUploadOpen(true); }, []);
@@ -608,11 +622,29 @@ function RechargePage() {
                             )
                           )
                         )}
-                        {/* Row 3: 查看详情 */}
+                        {/* Row 3: 退款申请 — only for 充值失败 (transfer_error) */}
+                        {!task.isDraft && (
+                          canRefund(task) ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 gap-1 text-xs w-full justify-center border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                              onClick={() => { setRefundTask(task); setRefundOpen(true); }}
+                            >
+                              退款申请
+                            </Button>
+                          ) : (
+                            <div className="group relative">
+                              <Button size="sm" variant="ghost" disabled className="h-7 gap-1 text-xs w-full justify-center">退款申请</Button>
+                              <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-[10px] text-background opacity-0 transition-opacity group-hover:opacity-100 z-10">仅充值失败状态可申请退款</span>
+                            </div>
+                          )
+                        )}
+                        {/* Row 4: 查看详情 */}
                         <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground w-full justify-center" onClick={() => { setDetailTask(task); setDetailDrawerOpen(true); }}>
                           <Eye className="h-3 w-3" />查看详情
                         </Button>
-                        {/* Row 4: … */}
+                        {/* Row 5: … */}
                         <Popover>
                           <PopoverTrigger asChild><Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground w-full justify-center tracking-widest">…</Button></PopoverTrigger>
                           <PopoverContent align="end" className="w-40 p-1.5">
@@ -689,6 +721,7 @@ function RechargePage() {
       <TaskDetailDrawer open={detailDrawerOpen} onOpenChange={setDetailDrawerOpen} task={buildDetailTaskInfo(detailTask)} />
       <UploadPaymentModal open={uploadOpen} onOpenChange={setUploadOpen} task={buildPaymentTaskInfo(uploadTask)} mode={uploadMode} />
       <CancelOrderModal open={cancelOpen} onOpenChange={setCancelOpen} task={buildCancelTaskInfo(cancelTask)} />
+      <RefundRequestModal open={refundOpen} onOpenChange={setRefundOpen} task={buildRefundTaskInfo(refundTask)} />
       <SpecialPaymentModal open={specialPaymentOpen} onOpenChange={setSpecialPaymentOpen} task={specialPaymentTask} />
       <ReuploadRejectedModal open={reuploadOpen} onOpenChange={setReuploadOpen} task={reuploadTask} />
     </div>
