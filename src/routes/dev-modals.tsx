@@ -30,9 +30,7 @@ function DevModals() {
       >
         打开 VoucherUploadModal
       </button>
-      <ClientOnly>
-        <VoucherUploadModal open={open} onOpenChange={setOpen} task={task} />
-      </ClientOnly>
+      <VoucherUploadModalLazy open={open} onOpenChange={setOpen} task={task} />
     </div>
   );
 }
