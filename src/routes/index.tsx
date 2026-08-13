@@ -37,7 +37,7 @@ import { RechargeModal } from "@/components/RechargeModal";
 import { AddAccountModal } from "@/components/AddAccountModal";
 import { TaskDetailDrawer, type DetailTaskInfo } from "@/components/TaskDetailDrawer";
 import { UploadPaymentModal, type PaymentTaskInfo, type UploadMode } from "@/components/UploadPaymentModal";
-import { SpecialPaymentModal, type SpecialPaymentTaskInfo } from "@/components/SpecialPaymentModal";
+import { VoucherUploadModal, type SpecialPaymentTaskInfo } from "@/components/semi/VoucherUploadModal";
 import { CancelOrderModal, type CancelTaskInfo } from "@/components/CancelOrderModal";
 import { ReuploadRejectedModal, type ReuploadRejectedTaskInfo } from "@/components/ReuploadRejectedModal";
 import { AccountLedgerDrawer, type LedgerAccountInfo } from "@/components/AccountLedgerDrawer";
