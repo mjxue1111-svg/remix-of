@@ -15,14 +15,23 @@ export default defineConfig({
   },
   vite: {
     resolve: {
-      alias: {
-        // Semi Design 的 dist CSS 未通过 package.json exports 暴露，这里
-        // 直接映射到实际文件，便于全局引入。
-        "@douyinfe/semi-ui/dist/css/semi.min.css": path.resolve(
-          process.cwd(),
-          "node_modules/@douyinfe/semi-ui/dist/css/semi.min.css",
-        ),
-      },
+      alias: [
+        {
+          // Semi Design 的 dist CSS 未通过 package.json exports 暴露，这里
+          // 直接映射到实际文件，便于全局引入。
+          find: "@douyinfe/semi-ui/dist/css/semi.min.css",
+          replacement: path.resolve(
+            process.cwd(),
+            "node_modules/@douyinfe/semi-ui/dist/css/semi.min.css",
+          ),
+        },
+        // Semi 内部引用 lodash 子路径；lodash-es 提供等价的 ESM 默认导出，避免 Vite CJS 解析错误。
+        { find: /^lodash\/(.*)$/, replacement: "lodash-es/$1" },
+        { find: "lodash", replacement: "lodash-es" },
+      ],
+    },
+    optimizeDeps: {
+      include: ["@douyinfe/semi-ui", "@douyinfe/semi-icons"],
     },
   },
 });
