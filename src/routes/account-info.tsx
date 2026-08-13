@@ -1,8 +1,7 @@
 import { Fragment, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  Building2, User, Shield, Plus, CheckCircle2, Eye, Pencil, Lock,
-  AlertTriangle, Clock, XCircle, FileText, ChevronRight, X,
+  Building2, User, Shield, Plus, CheckCircle2, Eye, Pencil, Lock, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,30 +38,6 @@ const statusConfig: Record<string, string> = {
   "已授权": "border-emerald-200 bg-emerald-50 text-emerald-700",
   "未授权": "border-amber-200 bg-amber-50 text-amber-700",
   "授权即将过期": "border-yellow-200 bg-yellow-50 text-yellow-700",
-};
-
-// ── Types ──────────────────────────────────────────────────────────────────
-
-type ModificationStatus = "pending_review" | "approved" | "rejected" | "cancelled";
-
-interface ModificationRequest {
-  id: string;
-  status: ModificationStatus;
-  newPhone: string;
-  contactName: string;
-  contactPhone: string;
-  contactEmail: string;
-  reason: string;
-  submittedAt: string;
-  rejectReason?: string;
-  reviewedAt?: string;
-}
-
-const modificationStatusConfig: Record<ModificationStatus, { label: string; className: string; icon: React.ReactNode }> = {
-  pending_review: { label: "待米播审核", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <Clock className="h-3 w-3" /> },
-  approved: { label: "审核通过", className: "border-emerald-200 bg-emerald-50 text-emerald-700", icon: <CheckCircle2 className="h-3 w-3" /> },
-  rejected: { label: "审核驳回", className: "border-red-200 bg-red-50 text-red-700", icon: <XCircle className="h-3 w-3" /> },
-  cancelled: { label: "已取消", className: "border-gray-200 bg-gray-50 text-gray-500", icon: <X className="h-3 w-3" /> },
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -139,12 +114,82 @@ function formatBankAccount(value: string): string {
 }
 
 // ── Mock company database ──────────────────────────────────────────────────
+// 工商回显字段：由企业名称联动查询工商登记信息（模拟数据），客户/运营不可直接编辑。
 
-const companyDb: Record<string, { creditCode: string; status: string }> = {
-  "上海云岚科技有限公司": { creditCode: "91310115MACJ6K1C8A", status: "存续" },
-  "北京星辰互动传媒有限公司": { creditCode: "91110108MA7YH3K2B9", status: "存续" },
-  "杭州启明信息技术有限公司": { creditCode: "91330100MA2KJ8P3D5", status: "存续" },
+interface CompanyRecord {
+  creditCode: string;
+  status: string;
+  legalRepresentative: string;
+  registeredCapital: string;
+  registeredAddress: string;
+}
+
+const companyDb: Record<string, CompanyRecord> = {
+  "上海云岚科技有限公司": {
+    creditCode: "91310115MACJ6K1C8A",
+    status: "存续",
+    legalRepresentative: "陈曦",
+    registeredCapital: "5,000 万元人民币",
+    registeredAddress: "上海市浦东新区张江高科技园区科苑路 88 号",
+  },
+  "北京星辰互动传媒有限公司": {
+    creditCode: "91110108MA7YH3K2B9",
+    status: "存续",
+    legalRepresentative: "王一凡",
+    registeredCapital: "2,000 万元人民币",
+    registeredAddress: "北京市朝阳区建国路 99 号院 2 号楼",
+  },
+  "杭州启明信息技术有限公司": {
+    creditCode: "91330100MA2KJ8P3D5",
+    status: "存续",
+    legalRepresentative: "林晓",
+    registeredCapital: "1,000 万元人民币",
+    registeredAddress: "杭州市余杭区五常街道文一西路 998 号",
+  },
 };
+
+// 字段来源标签：标注该字段数据来源，便于运营/客户识别是否可编辑
+type FieldSource = "工商回显" | "人工校正" | "系统记录";
+
+const sourceTagClass: Record<FieldSource, string> = {
+  工商回显: "border-blue-100 bg-blue-50 text-blue-600",
+  人工校正: "border-amber-100 bg-amber-50 text-amber-600",
+  系统记录: "border-border bg-muted/60 text-muted-foreground",
+};
+
+function SourceTag({ type }: { type: FieldSource }) {
+  return (
+    <span className={`inline-flex shrink-0 items-center rounded border px-1.5 py-0.5 text-[10px] font-medium leading-none ${sourceTagClass[type]}`}>
+      {type}
+    </span>
+  );
+}
+
+function FieldBox({ label, tag, children }: { label: string; tag: FieldSource; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+      <div className="mb-1.5 flex items-center gap-1.5">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        <SourceTag type={tag} />
+      </div>
+      <div className="text-sm font-medium text-foreground">{children}</div>
+    </div>
+  );
+}
+
+function EditFieldBox({ label, tag, required, children }: { label: string; tag: FieldSource; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5">
+        <Label className="text-xs font-normal text-muted-foreground">
+          {label} {required && <span className="text-destructive">*</span>}
+        </Label>
+        <SourceTag type={tag} />
+      </div>
+      {children}
+    </div>
+  );
+}
 
 // ── EntityInfoCard ──────────────────────────────────────────────────────────
 
@@ -154,6 +199,19 @@ function EntityInfoCard() {
   const [companyName, setCompanyName] = useState("上海云岚科技有限公司");
   const [creditCode, setCreditCode] = useState("91310115MACJ6K1C8A");
   const [companyStatus, setCompanyStatus] = useState("存续");
+  const [legalRepresentative, setLegalRepresentative] = useState("陈曦");
+  const [companyType, setCompanyType] = useState("品牌主体");
+  const [registeredCapital, setRegisteredCapital] = useState("5,000 万元人民币");
+  const [industry, setIndustry] = useState("互联网营销");
+  const [sopIndustryGroup, setSopIndustryGroup] = useState("泛互联网组");
+  const [industryTier, setIndustryTier] = useState("行业腰部客户");
+  const [employeeScale, setEmployeeScale] = useState("100-499 人");
+  const [registeredAddress, setRegisteredAddress] = useState("上海市浦东新区张江高科技园区科苑路 88 号");
+  const [businessAddress, setBusinessAddress] = useState("同注册地址");
+  const [businessScope, setBusinessScope] = useState(
+    "从事企业形象策划、品牌营销推广、短视频与直播内容营销咨询服务；受托为达人分销及广告主提供星图账户充值与结算服务。",
+  );
+  const [dataUpdatedAt, setDataUpdatedAt] = useState("2026-07-10 14:32");
   const [bankName, setBankName] = useState("招商银行股份有限公司上海张江支行");
   const [bankAccount, setBankAccount] = useState("6225888899990001");
   const [billingPhone, setBillingPhone] = useState("021-58886666");
@@ -163,6 +221,17 @@ function EntityInfoCard() {
   const [draft, setDraft] = useState({
     companyName: "",
     creditCode: "",
+    companyStatus: "",
+    legalRepresentative: "",
+    companyType: "",
+    registeredCapital: "",
+    industry: "",
+    sopIndustryGroup: "",
+    industryTier: "",
+    employeeScale: "",
+    registeredAddress: "",
+    businessAddress: "",
+    businessScope: "",
     bankName: "",
     bankAccount: "",
     billingPhone: "",
@@ -173,6 +242,17 @@ function EntityInfoCard() {
     setDraft({
       companyName,
       creditCode,
+      companyStatus,
+      legalRepresentative,
+      companyType,
+      registeredCapital,
+      industry,
+      sopIndustryGroup,
+      industryTier,
+      employeeScale,
+      registeredAddress,
+      businessAddress,
+      businessScope,
       bankName,
       bankAccount: bankAccount.replace(/\s/g, ""),
       billingPhone,
@@ -185,6 +265,7 @@ function EntityInfoCard() {
     setEditing(false);
   };
 
+  // 客户主体名称变更时，联动回显工商登记信息（企业名称/信用代码/法人代表/注册资本/注册地址）
   const handleCompanyNameChange = (value: string) => {
     setDraft((prev) => {
       const match = companyDb[value];
@@ -192,6 +273,9 @@ function EntityInfoCard() {
         ...prev,
         companyName: value,
         creditCode: match ? match.creditCode : prev.creditCode,
+        legalRepresentative: match ? match.legalRepresentative : prev.legalRepresentative,
+        registeredCapital: match ? match.registeredCapital : prev.registeredCapital,
+        registeredAddress: match ? match.registeredAddress : prev.registeredAddress,
       };
     });
   };
@@ -207,15 +291,28 @@ function EntityInfoCard() {
       toast.error("请填写必填字段");
       return;
     }
-    // Re-query credit code based on company name
+    // Re-query 工商回显字段
     const match = companyDb[draft.companyName.trim()];
     setCompanyName(draft.companyName.trim());
     setCreditCode(match ? match.creditCode : draft.creditCode);
-    setCompanyStatus(match ? match.status : companyStatus);
+    setLegalRepresentative(match ? match.legalRepresentative : draft.legalRepresentative);
+    setRegisteredCapital(match ? match.registeredCapital : draft.registeredCapital);
+    setRegisteredAddress(match ? match.registeredAddress : draft.registeredAddress);
+    // 人工校正字段
+    setCompanyStatus(draft.companyStatus.trim() || companyStatus);
+    setCompanyType(draft.companyType.trim());
+    setIndustry(draft.industry.trim());
+    setSopIndustryGroup(draft.sopIndustryGroup.trim());
+    setIndustryTier(draft.industryTier.trim());
+    setEmployeeScale(draft.employeeScale.trim());
+    setBusinessAddress(draft.businessAddress.trim());
+    setBusinessScope(draft.businessScope.trim());
     setBankName(draft.bankName.trim());
     setBankAccount(draft.bankAccount.trim());
     setBillingPhone(draft.billingPhone.trim() || "");
     setBillingAddress(draft.billingAddress.trim() || "");
+    // 系统记录字段：保存时自动刷新
+    setDataUpdatedAt(new Date().toISOString().slice(0, 16).replace("T", " "));
     setEditing(false);
     toast.success("信息已保存");
   };
@@ -247,46 +344,140 @@ function EntityInfoCard() {
         <div>
           <SectionTitle>工商信息</SectionTitle>
           {editing ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>客户主体名称 <span className="text-destructive">*</span></Label>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <EditFieldBox label="客户主体名称" tag="工商回显" required>
                 <Input
                   placeholder="请输入或选择客户主体名称"
                   value={draft.companyName}
                   onChange={(e) => handleCompanyNameChange(e.target.value)}
                   list="company-list"
+                  className="h-9"
                 />
                 <datalist id="company-list">
                   {Object.keys(companyDb).map((name) => (
                     <option key={name} value={name} />
                   ))}
                 </datalist>
-              </div>
-              <div className="space-y-1.5">
-                <Label>统一社会信用代码</Label>
-                <Input value={draft.creditCode} disabled className="bg-muted/50 text-muted-foreground" />
+              </EditFieldBox>
+              <EditFieldBox label="统一社会信用代码" tag="工商回显">
+                <Input value={draft.creditCode} disabled className="h-9 bg-muted/50 font-mono text-muted-foreground" />
+              </EditFieldBox>
+              <EditFieldBox label="企业状态" tag="人工校正">
+                <Input
+                  placeholder="请输入企业状态"
+                  value={draft.companyStatus}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, companyStatus: e.target.value }))}
+                  className="h-9"
+                />
+              </EditFieldBox>
+
+              <EditFieldBox label="法人代表" tag="工商回显">
+                <Input value={draft.legalRepresentative} disabled className="h-9 bg-muted/50 text-muted-foreground" />
+              </EditFieldBox>
+              <EditFieldBox label="企业类型" tag="人工校正">
+                <Input
+                  placeholder="如：集团 / 品牌主体"
+                  value={draft.companyType}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, companyType: e.target.value }))}
+                  className="h-9"
+                />
+              </EditFieldBox>
+              <EditFieldBox label="注册资本" tag="工商回显">
+                <Input value={draft.registeredCapital} disabled className="h-9 bg-muted/50 text-muted-foreground" />
+              </EditFieldBox>
+
+              <EditFieldBox label="所属行业" tag="人工校正">
+                <Input
+                  placeholder="请输入所属行业"
+                  value={draft.industry}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, industry: e.target.value }))}
+                  className="h-9"
+                />
+              </EditFieldBox>
+              <EditFieldBox label="SOP 行业组" tag="人工校正">
+                <Input
+                  placeholder="请输入 SOP 行业组"
+                  value={draft.sopIndustryGroup}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, sopIndustryGroup: e.target.value }))}
+                  className="h-9"
+                />
+              </EditFieldBox>
+              <EditFieldBox label="行业梯队" tag="人工校正">
+                <Input
+                  placeholder="请输入行业梯队"
+                  value={draft.industryTier}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, industryTier: e.target.value }))}
+                  className="h-9"
+                />
+              </EditFieldBox>
+
+              <EditFieldBox label="员工规模" tag="人工校正">
+                <Input
+                  placeholder="如：100-499 人"
+                  value={draft.employeeScale}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, employeeScale: e.target.value }))}
+                  className="h-9"
+                />
+              </EditFieldBox>
+              <EditFieldBox label="注册地址" tag="工商回显">
+                <Input value={draft.registeredAddress} disabled className="h-9 bg-muted/50 text-muted-foreground" />
+              </EditFieldBox>
+              <EditFieldBox label="经营地址" tag="人工校正">
+                <Input
+                  placeholder="请输入经营地址，如与注册地址一致可填“同注册地址”"
+                  value={draft.businessAddress}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, businessAddress: e.target.value }))}
+                  className="h-9"
+                />
+              </EditFieldBox>
+
+              <EditFieldBox label="资料更新时间" tag="系统记录">
+                <Input value={dataUpdatedAt} disabled className="h-9 bg-muted/50 font-mono text-muted-foreground" />
+              </EditFieldBox>
+
+              <div className="sm:col-span-3">
+                <EditFieldBox label="经营范围 / 企业简介" tag="人工校正">
+                  <Textarea
+                    placeholder="请输入经营范围或企业简介"
+                    value={draft.businessScope}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, businessScope: e.target.value }))}
+                    className="min-h-[80px] resize-none"
+                  />
+                </EditFieldBox>
               </div>
             </div>
           ) : (
-            <DescTable
-              rows={[
-                [
-                  { label: "客户主体名称", value: companyName },
-                  { label: "统一社会信用代码", value: creditCode || "—", mono: true },
-                ],
-                [
-                  {
-                    label: "企业状态",
-                    value: companyStatus ? (
-                      <Badge className="gap-1 border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
-                        <CheckCircle2 className="h-3 w-3" />{companyStatus}
-                      </Badge>
-                    ) : "—",
-                  },
-                  { label: "——", value: "——" },
-                ],
-              ]}
-            />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <FieldBox label="客户主体名称" tag="工商回显">{companyName}</FieldBox>
+              <FieldBox label="统一社会信用代码" tag="工商回显"><span className="font-mono">{creditCode || "—"}</span></FieldBox>
+              <FieldBox label="企业状态" tag="人工校正">
+                {companyStatus ? (
+                  <Badge className="gap-1 border-emerald-200 bg-emerald-50 text-xs text-emerald-700">
+                    <CheckCircle2 className="h-3 w-3" />{companyStatus}
+                  </Badge>
+                ) : "—"}
+              </FieldBox>
+
+              <FieldBox label="法人代表" tag="工商回显">{legalRepresentative || "—"}</FieldBox>
+              <FieldBox label="企业类型" tag="人工校正">{companyType || "—"}</FieldBox>
+              <FieldBox label="注册资本" tag="工商回显">{registeredCapital || "—"}</FieldBox>
+
+              <FieldBox label="所属行业" tag="人工校正">{industry || "—"}</FieldBox>
+              <FieldBox label="SOP 行业组" tag="人工校正">{sopIndustryGroup || "—"}</FieldBox>
+              <FieldBox label="行业梯队" tag="人工校正">{industryTier || "—"}</FieldBox>
+
+              <FieldBox label="员工规模" tag="人工校正">{employeeScale || "—"}</FieldBox>
+              <FieldBox label="注册地址" tag="工商回显">{registeredAddress || "—"}</FieldBox>
+              <FieldBox label="经营地址" tag="人工校正">{businessAddress || "—"}</FieldBox>
+
+              <FieldBox label="资料更新时间" tag="系统记录"><span className="font-mono">{dataUpdatedAt}</span></FieldBox>
+
+              <div className="sm:col-span-3">
+                <FieldBox label="经营范围 / 企业简介" tag="人工校正">
+                  <p className="text-sm font-normal leading-relaxed text-foreground">{businessScope || "—"}</p>
+                </FieldBox>
+              </div>
+            </div>
           )}
         </div>
 
@@ -356,7 +547,6 @@ function AccountInfoPage() {
   const [changePwdOpen, setChangePwdOpen] = useState(false);
   const [addAccountOpen, setAddAccountOpen] = useState(false);
   const [detailAccount, setDetailAccount] = useState<typeof starAccounts[0] | null>(null);
-  const [auditDetailOpen, setAuditDetailOpen] = useState(false);
 
   // User profile data
   const [contactData, setContactData] = useState({
@@ -371,9 +561,6 @@ function AccountInfoPage() {
     status: "正常",
     lastLoginTime: "2026-07-15 14:32",
   });
-
-  // Modification request
-  const [modificationRequest, setModificationRequest] = useState<ModificationRequest | null>(null);
 
   // Mask phone helper
   const maskPhone = (phone: string) => {
@@ -425,53 +612,6 @@ function AccountInfoPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Audit status banner */}
-          {modificationRequest && (
-            <div className={`flex items-center justify-between rounded-lg border px-4 py-3 ${
-              modificationRequest.status === "pending_review"
-                ? "border-amber-200 bg-amber-50"
-                : modificationRequest.status === "approved"
-                  ? "border-emerald-200 bg-emerald-50"
-                  : modificationRequest.status === "rejected"
-                    ? "border-red-200 bg-red-50"
-                    : "border-gray-200 bg-gray-50"
-            }`}>
-              <div className="flex items-center gap-2.5">
-                {modificationRequest.status === "pending_review" && (
-                  <Clock className="h-4 w-4 shrink-0 text-amber-600" />
-                )}
-                {modificationRequest.status === "approved" && (
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                )}
-                {modificationRequest.status === "rejected" && (
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
-                )}
-                {modificationRequest.status === "cancelled" && (
-                  <XCircle className="h-4 w-4 shrink-0 text-gray-500" />
-                )}
-                <span className={`text-xs font-medium ${
-                  modificationRequest.status === "pending_review" ? "text-amber-700" :
-                  modificationRequest.status === "approved" ? "text-emerald-700" :
-                  modificationRequest.status === "rejected" ? "text-red-700" :
-                  "text-gray-600"
-                }`}>
-                  {modificationRequest.status === "pending_review" && "你有一条账号信息修改申请待米播审核，审核通过后将更新绑定手机号及联系人信息。"}
-                  {modificationRequest.status === "approved" && "你的账号信息修改申请已审核通过，绑定手机号及联系人信息已更新。"}
-                  {modificationRequest.status === "rejected" && `你的账号信息修改申请已被驳回${modificationRequest.rejectReason ? `：${modificationRequest.rejectReason}` : ""}。`}
-                  {modificationRequest.status === "cancelled" && "你的账号信息修改申请已取消。"}
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => setAuditDetailOpen(true)}
-              >
-                查看申请 <ChevronRight className="h-3 w-3" />
-              </Button>
-            </div>
-          )}
-
           <DescTable
             rows={[
               [
@@ -552,32 +692,19 @@ function AccountInfoPage() {
           open={editContactOpen}
           onOpenChange={setEditContactOpen}
           contactData={contactData}
-          onSubmit={(newPhone, name, phone, email, reason) => {
+          onSubmit={(newPhone) => {
             setContactData(prev => ({
               ...prev,
-              phone: newPhone || prev.phone,
-              maskedPhone: newPhone ? maskPhone(newPhone) : prev.maskedPhone,
-              contactName: name,
-              contactPhone: phone,
-              contactEmail: email,
+              phone: newPhone,
+              maskedPhone: maskPhone(newPhone),
             }));
-            toast.success("个人信息修改成功");
+            toast.success("绑定手机号已更新");
           }}
         />
       )}
 
       {/* Change Password — Module 2 */}
       {changePwdOpen && <ChangePasswordModal open={changePwdOpen} onOpenChange={setChangePwdOpen} />}
-
-      {/* Audit Detail */}
-      {auditDetailOpen && modificationRequest && (
-        <AuditDetailModal
-          open={auditDetailOpen}
-          onOpenChange={setAuditDetailOpen}
-          request={modificationRequest}
-          currentData={contactData}
-        />
-      )}
 
       {/* Account Detail */}
       {detailAccount && (
@@ -648,17 +775,10 @@ function EditContactModal({
   contactData: {
     maskedPhone: string;
     phone: string;
-    contactName: string;
-    contactPhone: string;
-    contactEmail: string;
   };
-  onSubmit: (newPhone: string, name: string, phone: string, email: string, reason: string) => void;
+  onSubmit: (newPhone: string) => void;
 }) {
   const [newPhone, setNewPhone] = useState("");
-  const [contactName, setContactName] = useState(contactData.contactName);
-  const [contactPhone, setContactPhone] = useState(contactData.contactPhone);
-  const [contactEmail, setContactEmail] = useState(contactData.contactEmail);
-  const [reason, setReason] = useState("");
 
   // SMS verification
   const [smsCode, setSmsCode] = useState("");
@@ -676,13 +796,9 @@ function EditContactModal({
   };
 
   // Derived
-  const phoneChanged = newPhone.trim() !== "" && newPhone.trim() !== contactData.phone;
+  const phoneChanged = newPhone.trim() !== "";
   const canSendSms = phoneChanged && !validatePhone(newPhone) && smsCountdown === 0;
-  const isFormValid =
-    contactName.trim() !== "" &&
-    contactPhone.trim() !== "" &&
-    reason.trim() !== "" &&
-    (!phoneChanged || smsVerified);
+  const isFormValid = phoneChanged && !validatePhone(newPhone) && smsVerified;
 
   // SMS countdown timer
   const startCountdown = () => {
@@ -710,7 +826,7 @@ function EditContactModal({
     setSmsVerified(false);
     setSmsCode("");
     startCountdown();
-    toast.success(`验证码已发送至当前绑定手机号：${contactData.maskedPhone}，有效期 5 分钟。`);
+    toast.success(`验证码已发送至新绑定手机号：${newPhone.slice(0, 3)}****${newPhone.slice(-4)}，有效期 5 分钟。`);
   };
 
   const handleVerifySms = (code: string) => {
@@ -741,26 +857,19 @@ function EditContactModal({
 
   const handleSubmit = () => {
     if (!isFormValid) return;
-
-    // Validate phone if changed
-    if (phoneChanged && !smsVerified) {
-      toast.error("请先完成短信验证码验证");
-      return;
-    }
-
-    onSubmit(newPhone.trim(), contactName.trim(), contactPhone.trim(), contactEmail.trim(), reason.trim());
+    onSubmit(newPhone.trim());
     onOpenChange(false);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => onOpenChange(false)} />
-      <div className="relative z-10 flex max-h-[90vh] w-full max-w-[560px] flex-col rounded-2xl border border-border bg-background shadow-2xl">
+      <div className="relative z-10 flex max-h-[90vh] w-full max-w-[480px] flex-col rounded-2xl border border-border bg-background shadow-2xl">
         {/* Header */}
         <div className="flex items-start justify-between border-b border-border px-6 py-5">
           <div className="space-y-0.5">
             <h2 className="text-lg font-semibold text-foreground">修改个人信息</h2>
-            <p className="text-xs text-muted-foreground">修改联系人信息；如需更换绑定手机号，请完成短信验证码验证。</p>
+            <p className="text-xs text-muted-foreground">填写新绑定手机号并完成短信验证码验证，验证通过后立即生效，无需米播审核。</p>
           </div>
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => onOpenChange(false)}>
             <X className="h-4 w-4" />
@@ -771,9 +880,8 @@ function EditContactModal({
         <div className="flex-1 overflow-y-auto space-y-5 px-6 py-5">
           {/* Current phone — readonly */}
           <div className="space-y-1.5">
-            <Label>当前绑定手机号 <span className="text-destructive">*</span></Label>
+            <Label>当前绑定手机号</Label>
             <Input value={contactData.maskedPhone} disabled className="bg-muted/50 text-muted-foreground" />
-            <p className="text-[11px] text-muted-foreground">当前绑定的手机号，用于登录和安全验证，不可直接编辑。</p>
           </div>
 
           {/* New phone */}
@@ -824,57 +932,16 @@ function EditContactModal({
               </div>
               {smsSent && (
                 <p className="text-[11px] text-muted-foreground">
-                  验证码已发送至当前绑定手机号：{contactData.maskedPhone}
+                  验证码已发送至新绑定手机号：{newPhone.slice(0, 3)}****{newPhone.slice(-4)}
+                </p>
+              )}
+              {smsVerified && (
+                <p className="flex items-center gap-1 text-[11px] text-emerald-600">
+                  <CheckCircle2 className="h-3 w-3" />验证通过，确认后立即生效
                 </p>
               )}
             </div>
           )}
-
-          {/* Contact name */}
-          <div className="space-y-1.5">
-            <Label>联系人姓名 <span className="text-destructive">*</span></Label>
-            <Input
-              placeholder="请输入联系人姓名"
-              value={contactName}
-              onChange={(e) => setContactName(e.target.value)}
-              className="h-10"
-            />
-          </div>
-
-          {/* Contact phone */}
-          <div className="space-y-1.5">
-            <Label>联系人电话 <span className="text-destructive">*</span></Label>
-            <Input
-              type="tel"
-              placeholder="请输入联系人电话"
-              value={contactPhone}
-              onChange={(e) => setContactPhone(e.target.value)}
-              className="h-10"
-            />
-          </div>
-
-          {/* Contact email */}
-          <div className="space-y-1.5">
-            <Label>联系人邮箱</Label>
-            <Input
-              type="email"
-              placeholder="请输入联系人邮箱"
-              value={contactEmail}
-              onChange={(e) => setContactEmail(e.target.value)}
-              className="h-10"
-            />
-          </div>
-
-          {/* Reason */}
-          <div className="space-y-1.5">
-            <Label>修改原因 <span className="text-destructive">*</span></Label>
-            <Textarea
-              placeholder="请说明本次修改个人信息的原因"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="min-h-[80px] resize-none"
-            />
-          </div>
         </div>
 
         {/* Footer */}
@@ -944,132 +1011,6 @@ function ChangePasswordModal({
             <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>取消</Button>
             <Button className="flex-1" disabled={!isValid} onClick={handleSubmit}>确认修改</Button>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── AuditDetailModal ─────────────────────────────────────────────────────────
-
-function AuditDetailModal({
-  open,
-  onOpenChange,
-  request,
-  currentData,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  request: ModificationRequest;
-  currentData: { maskedPhone: string; contactName: string; contactPhone: string; contactEmail: string };
-}) {
-  const cfg = modificationStatusConfig[request.status];
-
-  const maskPhone = (phone: string) => {
-    if (phone.length < 7) return phone;
-    return phone.slice(0, 3) + "****" + phone.slice(-3);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => onOpenChange(false)} />
-      <div className="relative z-10 flex max-h-[90vh] w-full max-w-[560px] flex-col rounded-2xl border border-border bg-background shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-6 py-5">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
-              <FileText className="h-3.5 w-3.5 text-white" />
-            </div>
-            <h2 className="text-lg font-semibold text-foreground">修改申请详情</h2>
-          </div>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => onOpenChange(false)}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto space-y-4 px-6 py-5">
-          {/* Status */}
-          <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 p-4">
-            <span className="text-sm text-muted-foreground">申请状态</span>
-            <Badge className={`gap-1 text-xs ${cfg.className}`}>{cfg.icon}{cfg.label}</Badge>
-          </div>
-
-          {/* Application ID + time */}
-          <div className="rounded-xl border border-border/60 p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">申请编号</span>
-              <span className="font-mono text-sm font-medium text-foreground">{request.id}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">提交时间</span>
-              <span className="text-sm text-foreground">{request.submittedAt}</span>
-            </div>
-            {request.reviewedAt && (
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">审核时间</span>
-                <span className="text-sm text-foreground">{request.reviewedAt}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Changes */}
-          <div className="rounded-xl border border-border/60 p-4 space-y-2">
-            <h4 className="text-sm font-semibold text-foreground">申请修改内容</h4>
-            <div className="mt-2 space-y-2">
-              {request.newPhone && (
-                <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
-                  <span className="text-xs text-muted-foreground">绑定手机号</span>
-                  <div className="text-right">
-                    <span className="text-xs text-muted-foreground line-through mr-2">{currentData.maskedPhone}</span>
-                    <span className="text-sm font-medium text-foreground">→ {maskPhone(request.newPhone)}</span>
-                  </div>
-                </div>
-              )}
-              <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
-                <span className="text-xs text-muted-foreground">联系人姓名</span>
-                <div className="text-right">
-                  <span className="text-xs text-muted-foreground line-through mr-2">{currentData.contactName}</span>
-                  <span className="text-sm font-medium text-foreground">→ {request.contactName}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
-                <span className="text-xs text-muted-foreground">联系人电话</span>
-                <div className="text-right">
-                  <span className="text-xs text-muted-foreground line-through mr-2">{maskPhone(currentData.contactPhone)}</span>
-                  <span className="text-sm font-medium text-foreground">→ {maskPhone(request.contactPhone)}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
-                <span className="text-xs text-muted-foreground">联系人邮箱</span>
-                <div className="text-right">
-                  <span className="text-xs text-muted-foreground line-through mr-2">{currentData.contactEmail}</span>
-                  <span className="text-sm font-medium text-foreground">→ {request.contactEmail}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Reason */}
-          <div className="rounded-xl border border-border/60 p-4">
-            <h4 className="text-sm font-semibold text-foreground">修改原因</h4>
-            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{request.reason}</p>
-          </div>
-
-          {/* Reject reason */}
-          {request.status === "rejected" && request.rejectReason && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-              <h4 className="flex items-center gap-1.5 text-sm font-semibold text-red-700">
-                <AlertTriangle className="h-4 w-4" />驳回原因
-              </h4>
-              <p className="mt-2 text-sm text-red-600/80 leading-relaxed">{request.rejectReason}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="border-t border-border px-6 py-4">
-          <Button className="w-full" onClick={() => onOpenChange(false)}>关闭</Button>
         </div>
       </div>
     </div>

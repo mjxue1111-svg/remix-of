@@ -10,10 +10,66 @@ import {
   DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Building2, User, ShieldCheck, Bell, UserCircle, BookOpen,
   Maximize, Minimize, Globe, Type, Lock, LogOut,
-  ChevronDown, Check,
+  ChevronDown, Check, CheckCheck, PartyPopper, TrendingUp, AlertTriangle, Gift,
 } from "lucide-react";
+
+type NotificationType = "success" | "finance" | "warning" | "reward";
+
+interface NotificationItem {
+  id: string;
+  type: NotificationType;
+  title: string;
+  description: string;
+  time: string;
+  read: boolean;
+}
+
+const notificationTypeStyle: Record<NotificationType, { icon: React.ReactNode; iconBg: string }> = {
+  success: { icon: <PartyPopper className="h-4 w-4" />, iconBg: "bg-emerald-500" },
+  finance: { icon: <TrendingUp className="h-4 w-4" />, iconBg: "bg-blue-500" },
+  warning: { icon: <AlertTriangle className="h-4 w-4" />, iconBg: "bg-amber-500" },
+  reward: { icon: <Gift className="h-4 w-4" />, iconBg: "bg-primary" },
+};
+
+const initialNotifications: NotificationItem[] = [
+  {
+    id: "n1",
+    type: "success",
+    title: "账户审核通过",
+    description: "您新增的星图账户「云岚直播推广」已审核通过，现已可正常发起充值。",
+    time: "10 分钟前",
+    read: false,
+  },
+  {
+    id: "n2",
+    type: "finance",
+    title: "本月充值已超 100 万",
+    description: "本月累计充值金额已超过 100 万元，下次充值可享受额外折扣，详情请咨询您的对接人。",
+    time: "2 小时前",
+    read: false,
+  },
+  {
+    id: "n3",
+    type: "warning",
+    title: "特批订单请按时付款",
+    description: "您的特批充值申请已处理完成，请按承诺时间完成付款并上传凭证，以免影响后续合作。",
+    time: "昨天 14:20",
+    read: false,
+  },
+  {
+    id: "n4",
+    type: "reward",
+    title: "充值即将达标，可领返点",
+    description: "本月充值金额即将满 100 万元，达标后可获得返点激励，请关注账户余额变动。",
+    time: "07-10 09:05",
+    read: true,
+  },
+];
 
 export function DashboardHeader() {
   const navigate = useNavigate();
@@ -23,6 +79,17 @@ export function DashboardHeader() {
   const [lockOpen, setLockOpen] = useState(false);
   const [lockPwd, setLockPwd] = useState("");
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const markAllRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+
+  const markOneRead = (id: string) => {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  };
 
   const handleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -60,10 +127,68 @@ export function DashboardHeader() {
         </div>
 
         <div className="flex items-center gap-4">
-          <button className="relative rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
-          </button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="relative rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-white">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-96 p-0">
+              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                <h3 className="text-sm font-semibold text-foreground">消息通知</h3>
+                {unreadCount > 0 ? (
+                  <button
+                    onClick={markAllRead}
+                    className="flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <CheckCheck className="h-3 w-3" />
+                    全部标记为已读
+                  </button>
+                ) : (
+                  <span className="text-xs text-muted-foreground">已全部读完</span>
+                )}
+              </div>
+
+              <div className="max-h-96 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
+                    <Bell className="h-8 w-8 opacity-40" />
+                    <p className="text-xs">暂无消息</p>
+                  </div>
+                ) : (
+                  notifications.map((n) => {
+                    const style = notificationTypeStyle[n.type];
+                    return (
+                      <button
+                        key={n.id}
+                        onClick={() => markOneRead(n.id)}
+                        className={`flex w-full items-start gap-3 border-b border-border/60 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-accent ${
+                          n.read ? "" : "bg-sapphire-subtle/60"
+                        }`}
+                      >
+                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white ${style.iconBg}`}>
+                          {style.icon}
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-medium text-foreground">{n.title}</span>
+                            {!n.read && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
+                          </div>
+                          <p className="text-xs leading-relaxed text-muted-foreground">{n.description}</p>
+                          <p className="text-[11px] text-muted-foreground/70">{n.time}</p>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
