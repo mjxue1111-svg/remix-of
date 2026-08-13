@@ -1,18 +1,40 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { UploadPaymentModal, type UploadMode } from "@/components/UploadPaymentModal";
+import { useState } from "react";
+import { VoucherUploadModalLazy, type SpecialPaymentTaskInfo } from "@/components/semi/VoucherUploadModalLazy";
 
-const task = {
+const task: SpecialPaymentTaskInfo = {
   id: "RC202607210001",
-  rechargeType: "regular" as const,
   account: "星图账户 A · 北京米粒文化传媒",
-  payableAmount: "¥ 128,000.00",
+  accountId: "ST-10086101",
   subject: "北京米粒文化传媒有限公司",
+  amount: "¥100,000.00",
+  payableAmount: "¥98,000.00",
+  discount: "98 折",
+  rechargeType: "special",
+  node: "sp_payment_pending",
+  step: 5,
+  totalSteps: 5,
+  customerName: "北京米粒文化传媒有限公司",
+  paymentStatus: "error",
+  errorReason: "付款金额与应付金额不一致、凭证信息不清晰",
+  errorDescription: "请核对付款金额与应付金额是否一致，并重新上传清晰的付款凭证。",
 };
 
 function DevModals() {
-  const mode = (new URLSearchParams(window.location.search).get("mode") || "upload") as UploadMode;
+  // force reload marker
+  // eslint-disable-next-line no-console
+  console.log("DevModals render");
+  const [open, setOpen] = useState(true);
   return (
-    <UploadPaymentModal open onOpenChange={() => {}} task={task} mode={mode} errorReason="付款金额与实付金额不一致" />
+    <div className="p-6">
+      <button
+        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+        onClick={() => setOpen(true)}
+      >
+        打开 VoucherUploadModal
+      </button>
+      <VoucherUploadModalLazy open={open} onOpenChange={setOpen} task={task} />
+    </div>
   );
 }
 

@@ -37,7 +37,7 @@ import { RechargeModal } from "@/components/RechargeModal";
 import { AddAccountModal } from "@/components/AddAccountModal";
 import { TaskDetailDrawer, type DetailTaskInfo } from "@/components/TaskDetailDrawer";
 import { UploadPaymentModal, type PaymentTaskInfo, type UploadMode } from "@/components/UploadPaymentModal";
-import { SpecialPaymentModal, type SpecialPaymentTaskInfo } from "@/components/SpecialPaymentModal";
+import { VoucherUploadModalLazy, type SpecialPaymentTaskInfo } from "@/components/semi/VoucherUploadModalLazy";
 import { CancelOrderModal, type CancelTaskInfo } from "@/components/CancelOrderModal";
 import { ReuploadRejectedModal, type ReuploadRejectedTaskInfo } from "@/components/ReuploadRejectedModal";
 import { AccountLedgerDrawer, type LedgerAccountInfo } from "@/components/AccountLedgerDrawer";
@@ -1359,7 +1359,7 @@ function Index() {
         mode={uploadMode}
       />
 
-      <SpecialPaymentModal
+      <VoucherUploadModalLazy
         open={specialPaymentOpen}
         onOpenChange={setSpecialPaymentOpen}
         task={specialPaymentTask}
