@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ComponentProps } from "react";
+import { lazy, Suspense } from "react";
 import { ClientOnly } from "@/components/ClientOnly";
 
 export type SpecialPaymentTaskInfo = {
@@ -28,21 +28,14 @@ interface Props {
   task: SpecialPaymentTaskInfo | null;
 }
 
+const VoucherUploadModal = lazy(() => import("./VoucherUploadModal"));
+
 export function VoucherUploadModalLazy(props: Props) {
-  const [Modal, setModal] = useState<React.ComponentType<Props> | null>(null);
-
-  useEffect(() => {
-    import("./VoucherUploadModal")
-      .then((mod) => setModal(() => mod.VoucherUploadModal))
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.error("Failed to load VoucherUploadModal:", err);
-      });
-  }, []);
-
   return (
     <ClientOnly fallback={null}>
-      {Modal ? <Modal {...props} /> : null}
+      <Suspense fallback={null}>
+        <VoucherUploadModal {...props} />
+      </Suspense>
     </ClientOnly>
   );
 }
