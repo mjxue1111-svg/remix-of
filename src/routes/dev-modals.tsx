@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { VoucherUploadModal, type SpecialPaymentTaskInfo } from "@/components/semi/VoucherUploadModal";
+import { ClientOnly } from "@/components/ClientOnly";
 
 const task: SpecialPaymentTaskInfo = {
   id: "RC202607210001",
