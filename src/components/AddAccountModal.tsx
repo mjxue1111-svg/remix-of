@@ -16,6 +16,7 @@ import {
   IdCard,
   Landmark,
   KeyRound,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,12 +26,38 @@ import { Badge } from "@/components/ui/badge";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
+export interface AddAccountExistingFile {
+  name: string;
+  sizeKB: number;
+}
+
+export interface AddAccountInitialData {
+  subject: string;
+  directClientId: string;
+  contactName: string;
+  contactPhone: string;
+  contactEmail: string;
+  proofType: "bank" | "auth" | "";
+  proofBankName: string;
+  proofBankCard: string;
+  proofAuthAccountId: string;
+  existingFiles: AddAccountExistingFile[];
+  rejectReason?: string;
+}
+
 interface AddAccountModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialData?: AddAccountInitialData;
 }
 
 type ProofType = "bank" | "auth" | "";
+
+interface MaterialFileItem {
+  name: string;
+  sizeKB: number;
+  file?: File;
+}
 
 const defaultContactName = "李明";
 const defaultSubject = "上海云岚科技有限公司";
@@ -38,29 +65,33 @@ const defaultSubject = "上海云岚科技有限公司";
 // ── Form Step ──────────────────────────────────────────────────────────────
 
 function FormStep({
+  initialData,
   onSuccess,
   onClose,
 }: {
+  initialData?: AddAccountInitialData;
   onSuccess: (data: { subject: string; contactName: string }) => void;
   onClose: () => void;
 }) {
   // Section 1: subject
-  const [addSubject, setAddSubject] = useState(defaultSubject);
+  const [addSubject, setAddSubject] = useState(initialData?.subject ?? defaultSubject);
 
   // Section 2: 直客ID
-  const [directClientId, setDirectClientId] = useState("");
+  const [directClientId, setDirectClientId] = useState(initialData?.directClientId ?? "");
 
   // Section 3: contact info
-  const [contactName, setContactName] = useState(defaultContactName);
-  const [contactPhone, setContactPhone] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
+  const [contactName, setContactName] = useState(initialData?.contactName ?? defaultContactName);
+  const [contactPhone, setContactPhone] = useState(initialData?.contactPhone ?? "");
+  const [contactEmail, setContactEmail] = useState(initialData?.contactEmail ?? "");
 
   // Section 4: materials
-  const [proofType, setProofType] = useState<ProofType>("");
-  const [proofBankName, setProofBankName] = useState("");
-  const [proofBankCard, setProofBankCard] = useState("");
-  const [proofAuthAccountId, setProofAuthAccountId] = useState("");
-  const [materialFiles, setMaterialFiles] = useState<File[]>([]);
+  const [proofType, setProofType] = useState<ProofType>(initialData?.proofType ?? "");
+  const [proofBankName, setProofBankName] = useState(initialData?.proofBankName ?? "");
+  const [proofBankCard, setProofBankCard] = useState(initialData?.proofBankCard ?? "");
+  const [proofAuthAccountId, setProofAuthAccountId] = useState(initialData?.proofAuthAccountId ?? "");
+  const [materialFiles, setMaterialFiles] = useState<MaterialFileItem[]>(
+    initialData?.existingFiles ?? [],
+  );
 
   // Footer
   const [confirmed, setConfirmed] = useState(false);
@@ -86,7 +117,11 @@ function FormStep({
   };
 
   const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
+    const files = Array.from(e.target.files ?? []).map((file) => ({
+      name: file.name,
+      sizeKB: file.size / 1024,
+      file,
+    }));
     setMaterialFiles((prev) => [...prev, ...files]);
   };
 
@@ -127,6 +162,17 @@ function FormStep({
 
       {/* ── Body ───────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-8 py-6"><div className="space-y-6">
+        {initialData?.rejectReason && (
+          <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+            <div>
+              <h4 className="text-sm font-semibold text-red-700">上次审核驳回原因</h4>
+              <p className="mt-1 text-xs leading-relaxed text-red-600/90">{initialData.rejectReason}</p>
+              <p className="mt-1 text-xs leading-relaxed text-red-600/70">已为您带回上次填写的信息，请修改后重新提交。</p>
+            </div>
+          </div>
+        )}
+
         {/* ══════════════════════════════════════════════════
             Section 1: Account Subject
             ══════════════════════════════════════════════════ */}
@@ -371,7 +417,7 @@ function FormStep({
                           {file.name}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {(file.size / 1024).toFixed(1)} KB
+                          {file.sizeKB.toFixed(1)} KB{!file.file && "　·　已上传"}
                         </p>
                       </div>
                     </div>
@@ -511,7 +557,7 @@ function SuccessStep({
 
 // ── Main Modal ─────────────────────────────────────────────────────────────
 
-export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
+export function AddAccountModal({ open, onOpenChange, initialData }: AddAccountModalProps) {
   const [step, setStep] = useState<"form" | "success">("form");
   const [submittedData, setSubmittedData] = useState<{
     subject: string;
@@ -565,7 +611,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
         aria-modal="true"
       >
         {step === "form" ? (
-          <FormStep onSuccess={handleSuccess} onClose={handleClose} />
+          <FormStep initialData={initialData} onSuccess={handleSuccess} onClose={handleClose} />
         ) : (
           <SuccessStep
             subject={submittedData?.subject ?? ""}

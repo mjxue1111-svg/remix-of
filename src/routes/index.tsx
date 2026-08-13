@@ -30,13 +30,11 @@ import {
   CreditCard,
   XCircle,
   Search,
-  Hash,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { RechargeModal } from "@/components/RechargeModal";
-import { AddAccountModal } from "@/components/AddAccountModal";
-import { BindAccountModal } from "@/components/BindAccountModal";
+import { AddAccountModal, type AddAccountInitialData } from "@/components/AddAccountModal";
 import { TaskDetailDrawer, type DetailTaskInfo } from "@/components/TaskDetailDrawer";
 import { UploadPaymentModal, type PaymentTaskInfo, type UploadMode } from "@/components/UploadPaymentModal";
 import { VoucherUploadModalLazy, type SpecialPaymentTaskInfo } from "@/components/semi/VoucherUploadModalLazy";
@@ -399,6 +397,32 @@ const accounts = [
     updatedAt: "2026-07-10 13:58",
   },
   {
+    name: "云岚效果推广", accountType: "投放账户",
+    accountId: "ST-10086107",
+    subject: "上海云岚科技有限公司",
+    balance: "",
+    monthlyRecharge: "",
+    monthlySpend: "",
+    status: "审核驳回",
+    updatedAt: "",
+    rejectReason: "账户证明材料模糊，无法核实开户信息，请重新上传清晰的证明材料。",
+    draftData: {
+      subject: "上海云岚科技有限公司",
+      directClientId: "DK-88213",
+      contactName: "王芳",
+      contactPhone: "13800001234",
+      contactEmail: "wangfang@yunlan.com",
+      proofType: "bank" as const,
+      proofBankName: "招商银行股份有限公司上海张江支行",
+      proofBankCard: "6225888899990099",
+      proofAuthAccountId: "",
+      existingFiles: [
+        { name: "营业执照_云岚效果推广.pdf", sizeKB: 812 },
+        { name: "品牌LOGO.png", sizeKB: 156 },
+      ],
+    },
+  },
+  {
     name: "云岚直播推广", accountType: "投放账户",
     accountId: "ST-10086106",
     subject: "上海云岚科技有限公司",
@@ -469,7 +493,7 @@ const taskBreakdown = [
   { label: "平台处理中", count: "1 笔", color: "text-blue-600" },
 ];
 
-function WelcomeSection({ onRecharge, onAddAccount, onBindAccount }: { onRecharge: () => void; onAddAccount: () => void; onBindAccount: () => void }) {
+function WelcomeSection({ onRecharge, onAddAccount }: { onRecharge: () => void; onAddAccount: () => void }) {
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-sapphire p-6 text-primary-foreground shadow-lg sm:p-8">
       <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -495,13 +519,6 @@ function WelcomeSection({ onRecharge, onAddAccount, onBindAccount }: { onRecharg
           >
             <Plus className="mr-2 h-4 w-4" />
             新增账户
-          </Button>
-          <Button
-            onClick={onBindAccount}
-            className="bg-white text-primary shadow-md hover:bg-white/90"
-          >
-            <Hash className="mr-2 h-4 w-4" />
-            绑定账户
           </Button>
           <Button
             onClick={onRecharge}
@@ -1009,8 +1026,8 @@ function RechargeTasks({
   );
 }
 
-function AccountOverview({ onRecharge, onAddAccount, onBindAccount, onViewLedger, onViewDetail }: {
-  onRecharge: () => void; onAddAccount: () => void; onBindAccount: () => void;
+function AccountOverview({ onRecharge, onAddAccount, onReEditAccount, onViewLedger, onViewDetail }: {
+  onRecharge: () => void; onAddAccount: () => void; onReEditAccount: (account: typeof accounts[0]) => void;
   onViewLedger: (account: typeof accounts[0]) => void;
   onViewDetail: (account: typeof accounts[0]) => void;
 }) {
@@ -1048,10 +1065,6 @@ function AccountOverview({ onRecharge, onAddAccount, onBindAccount, onViewLedger
             <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={onAddAccount}>
               <Plus className="h-3.5 w-3.5" />
               新增账户
-            </Button>
-            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={onBindAccount}>
-              <Hash className="h-3.5 w-3.5" />
-              绑定账户
             </Button>
             <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs text-muted-foreground">
               查看全部
@@ -1215,10 +1228,10 @@ function AccountOverview({ onRecharge, onAddAccount, onBindAccount, onViewLedger
                             <Eye className="mr-1 h-3 w-3" />详情
                           </Button>
                         )}
-                        {/* 修改并重新提交 — 仅审核驳回时显示 */}
+                        {/* 重新编辑 — 仅审核驳回时显示，回到原始编辑弹窗并保留已填写内容 */}
                         {isRejected && (
-                          <Button variant="outline" size="sm" className="h-7 border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 text-xs w-full justify-center" onClick={onAddAccount}>
-                            <RefreshCw className="mr-1 h-3 w-3" />修改并重新提交
+                          <Button variant="outline" size="sm" className="h-7 border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 text-xs w-full justify-center" onClick={() => onReEditAccount(account)}>
+                            <RefreshCw className="mr-1 h-3 w-3" />重新编辑
                           </Button>
                         )}
                       </div>
@@ -1240,7 +1253,7 @@ function Index() {
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [detailTask, setDetailTask] = useState<Task | null>(null);
   const [addAccountModalOpen, setAddAccountModalOpen] = useState(false);
-  const [bindAccountModalOpen, setBindAccountModalOpen] = useState(false);
+  const [addAccountInitialData, setAddAccountInitialData] = useState<AddAccountInitialData | undefined>(undefined);
   const [uploadPaymentOpen, setUploadPaymentOpen] = useState(false);
   const [uploadTask, setUploadTask] = useState<Task | null>(null);
   const [uploadMode, setUploadMode] = useState<UploadMode>("upload");
@@ -1258,8 +1271,28 @@ function Index() {
   const [detailAccount, setDetailAccount] = useState<typeof accounts[0] | null>(null);
 
   const handleRecharge = () => setRechargeModalOpen(true);
-  const handleAddAccount = () => setAddAccountModalOpen(true);
-  const handleBindAccount = () => setBindAccountModalOpen(true);
+  const handleAddAccount = () => {
+    setAddAccountInitialData(undefined);
+    setAddAccountModalOpen(true);
+  };
+
+  const handleReEditAccount = (account: typeof accounts[0]) => {
+    const draft = (account as any).draftData;
+    setAddAccountInitialData({
+      subject: draft?.subject ?? account.subject,
+      directClientId: draft?.directClientId ?? "",
+      contactName: draft?.contactName ?? "",
+      contactPhone: draft?.contactPhone ?? "",
+      contactEmail: draft?.contactEmail ?? "",
+      proofType: draft?.proofType ?? "",
+      proofBankName: draft?.proofBankName ?? "",
+      proofBankCard: draft?.proofBankCard ?? "",
+      proofAuthAccountId: draft?.proofAuthAccountId ?? "",
+      existingFiles: draft?.existingFiles ?? [],
+      rejectReason: (account as any).rejectReason,
+    });
+    setAddAccountModalOpen(true);
+  };
 
   const handleViewDetail = useCallback((task: Task) => {
     setDetailTask(task);
@@ -1385,12 +1418,12 @@ function Index() {
 
   return (
     <div className="space-y-6 p-6">
-      <WelcomeSection onRecharge={handleRecharge} onAddAccount={handleAddAccount} onBindAccount={handleBindAccount} />
+      <WelcomeSection onRecharge={handleRecharge} onAddAccount={handleAddAccount} />
       <StatsCards />
 
       <RechargeTasks onViewDetail={handleViewDetail} onUploadPayment={handleUploadPayment} onRecharge={handleRecharge} onCancelOrder={handleCancelOrder} onContinueSubmit={handleContinueSubmit} onSpecialPayment={handleSpecialPayment} onRefundRequest={handleRefundRequest} />
 
-      <AccountOverview onRecharge={handleRecharge} onAddAccount={handleAddAccount} onBindAccount={handleBindAccount} onViewLedger={handleViewLedger} onViewDetail={handleViewAccountDetail} />
+      <AccountOverview onRecharge={handleRecharge} onAddAccount={handleAddAccount} onReEditAccount={handleReEditAccount} onViewLedger={handleViewLedger} onViewDetail={handleViewAccountDetail} />
 
       {/* ── Modals & Drawers ────────────────────────────── */}
       <RechargeModal
@@ -1410,12 +1443,11 @@ function Index() {
 
       <AddAccountModal
         open={addAccountModalOpen}
-        onOpenChange={setAddAccountModalOpen}
-      />
-
-      <BindAccountModal
-        open={bindAccountModalOpen}
-        onOpenChange={setBindAccountModalOpen}
+        onOpenChange={(open) => {
+          setAddAccountModalOpen(open);
+          if (!open) setAddAccountInitialData(undefined);
+        }}
+        initialData={addAccountInitialData}
       />
 
       <UploadPaymentModal
