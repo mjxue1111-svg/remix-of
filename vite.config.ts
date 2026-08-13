@@ -16,6 +16,10 @@ export default defineConfig({
   vite: {
     resolve: {
       alias: [
+        // Semi Design 依赖 date-fns v2 的内部子路径（经由 date-fns-tz@1），
+        // 而项目使用 date-fns v4，其 exports 不再暴露 _lib/*。这里把这些
+        // 内部子路径指向并存安装的 date-fns v2。
+        { find: /^date-fns\/_lib\/(.*)$/, replacement: "date-fns-v2/_lib/$1" },
         {
           // Semi Design 的 dist CSS 未通过 package.json exports 暴露，这里
           // 直接映射到实际文件，便于全局引入。
