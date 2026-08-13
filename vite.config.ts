@@ -26,6 +26,7 @@ export default defineConfig({
     },
     optimizeDeps: {
       exclude: ["@douyinfe/semi-ui", "@douyinfe/semi-icons"],
+      include: ["lodash"],
     },
   },
 });
