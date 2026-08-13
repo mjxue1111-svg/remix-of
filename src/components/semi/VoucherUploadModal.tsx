@@ -150,12 +150,12 @@ export function VoucherUploadModal({ open, onOpenChange, task }: VoucherUploadMo
     Toast.success("付款凭证草稿已保存");
   };
 
-  const handleFileSelect = (files: File[]) => {
-    const file = files[0];
-    if (!file) return;
+  const handleFileSelect = (props: { file: File; fileList: File[] }) => {
+    const { file } = props;
+    if (!file) return false;
     if (file.size > MAX_FILE_SIZE) {
       Toast.error("文件大小超过 10MB，请重新选择");
-      return;
+      return false;
     }
     setReceiptFile(file);
     return false; // prevent actual upload
