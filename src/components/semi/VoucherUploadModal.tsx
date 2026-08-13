@@ -64,7 +64,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export function VoucherUploadModal({ open, onOpenChange, task }: VoucherUploadModalProps) {
+export default function VoucherUploadModal({ open, onOpenChange, task }: VoucherUploadModalProps) {
   const [step, setStep] = useState<"form" | "success">("form");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [payAccountName, setPayAccountName] = useState("");
