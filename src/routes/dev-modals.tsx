@@ -22,6 +22,8 @@ const task: SpecialPaymentTaskInfo = {
 
 function DevModals() {
   // force reload marker
+  // eslint-disable-next-line no-console
+  console.log("DevModals render");
   const [open, setOpen] = useState(true);
   return (
     <div className="p-6">
