@@ -1359,13 +1359,11 @@ function Index() {
         mode={uploadMode}
       />
 
-      <ClientOnly>
-        <VoucherUploadModal
-          open={specialPaymentOpen}
-          onOpenChange={setSpecialPaymentOpen}
-          task={specialPaymentTask}
-        />
-      </ClientOnly>
+      <VoucherUploadModalLazy
+        open={specialPaymentOpen}
+        onOpenChange={setSpecialPaymentOpen}
+        task={specialPaymentTask}
+      />
 
       <ReuploadRejectedModal
         open={reuploadOpen}
