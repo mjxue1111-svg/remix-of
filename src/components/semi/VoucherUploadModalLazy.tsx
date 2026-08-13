@@ -29,6 +29,8 @@ interface Props {
 }
 
 export function VoucherUploadModalLazy(props: Props) {
+  // eslint-disable-next-line no-console
+  console.log("VoucherUploadModalLazy: render", props);
   const [Modal, setModal] = useState<React.ComponentType<Props> | null>(null);
 
   useEffect(() => {
