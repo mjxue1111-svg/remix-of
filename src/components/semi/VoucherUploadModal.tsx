@@ -151,7 +151,7 @@ export function VoucherUploadModal({ open, onOpenChange, task }: VoucherUploadMo
   };
 
   const handleFileSelect = (props: { file: File; fileList: File[] }) => {
-    const { file } = props;
+    const file = props.file as File;
     if (!file) return false;
     if (file.size > MAX_FILE_SIZE) {
       Toast.error("文件大小超过 10MB，请重新选择");
