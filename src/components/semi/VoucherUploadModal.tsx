@@ -453,7 +453,7 @@ export function VoucherUploadModal({ open, onOpenChange, task }: VoucherUploadMo
       <div className="flex items-start gap-2">
         <Checkbox
           checked={acknowledged}
-          onChange={(e) => setAcknowledged(e.target.checked)}
+          onChange={(e) => setAcknowledged(!!e.target.checked)}
           style={{ marginTop: 2 }}
         />
         <span style={{ fontSize: 12, color: "var(--color-muted-foreground)" }}>
