@@ -32,7 +32,12 @@ export function VoucherUploadModalLazy(props: Props) {
   const [Modal, setModal] = useState<React.ComponentType<Props> | null>(null);
 
   useEffect(() => {
-    import("./VoucherUploadModal").then((mod) => setModal(() => mod.VoucherUploadModal));
+    import("./VoucherUploadModal")
+      .then((mod) => setModal(() => mod.VoucherUploadModal))
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error("Failed to load VoucherUploadModal:", err);
+      });
   }, []);
 
   return (
