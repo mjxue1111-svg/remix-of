@@ -1,7 +1,7 @@
 import { Fragment, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  Building2, User, Shield, Plus, CheckCircle2, Eye, Pencil, Lock, X,
+  Building2, User, Shield, Plus, CheckCircle2, Eye, Pencil, Lock, X, Hash,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { AddAccountModal } from "@/components/AddAccountModal";
+import { BindAccountModal } from "@/components/BindAccountModal";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/account-info")({ component: AccountInfoPage });
@@ -546,6 +547,7 @@ function AccountInfoPage() {
   const [editContactOpen, setEditContactOpen] = useState(false);
   const [changePwdOpen, setChangePwdOpen] = useState(false);
   const [addAccountOpen, setAddAccountOpen] = useState(false);
+  const [bindAccountOpen, setBindAccountOpen] = useState(false);
   const [detailAccount, setDetailAccount] = useState<typeof starAccounts[0] | null>(null);
 
   // User profile data
@@ -576,9 +578,14 @@ function AccountInfoPage() {
           <h1 className="text-xl font-bold tracking-tight text-foreground">我的账号信息</h1>
           <p className="mt-1 text-sm text-muted-foreground">查看和管理当前客户主体信息、登录账号信息及已绑定账户</p>
         </div>
-        <Button onClick={() => setAddAccountOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />新增账户
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setBindAccountOpen(true)} className="gap-2">
+            <Hash className="h-4 w-4" />绑定账户
+          </Button>
+          <Button onClick={() => setAddAccountOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />新增账户
+          </Button>
+        </div>
       </div>
 
       {/* ── Module 1: Business & Financial Info ───────────── */}
@@ -649,9 +656,14 @@ function AccountInfoPage() {
               </CardTitle>
               <CardDescription>展示当前客户主体下已绑定的星图账户，仅支持查看，不支持编辑或删除。</CardDescription>
             </div>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setAddAccountOpen(true)}>
-              <Plus className="h-3.5 w-3.5" />新增账户
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setBindAccountOpen(true)}>
+                <Hash className="h-3.5 w-3.5" />绑定账户
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setAddAccountOpen(true)}>
+                <Plus className="h-3.5 w-3.5" />新增账户
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -758,6 +770,7 @@ function AccountInfoPage() {
 
       {/* Add Account Modal */}
       <AddAccountModal open={addAccountOpen} onOpenChange={setAddAccountOpen} />
+      <BindAccountModal open={bindAccountOpen} onOpenChange={setBindAccountOpen} />
     </div>
   );
 }

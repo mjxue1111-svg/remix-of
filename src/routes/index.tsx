@@ -30,11 +30,13 @@ import {
   CreditCard,
   XCircle,
   Search,
+  Hash,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { RechargeModal } from "@/components/RechargeModal";
 import { AddAccountModal } from "@/components/AddAccountModal";
+import { BindAccountModal } from "@/components/BindAccountModal";
 import { TaskDetailDrawer, type DetailTaskInfo } from "@/components/TaskDetailDrawer";
 import { UploadPaymentModal, type PaymentTaskInfo, type UploadMode } from "@/components/UploadPaymentModal";
 import { VoucherUploadModalLazy, type SpecialPaymentTaskInfo } from "@/components/semi/VoucherUploadModalLazy";
@@ -467,7 +469,7 @@ const taskBreakdown = [
   { label: "平台处理中", count: "1 笔", color: "text-blue-600" },
 ];
 
-function WelcomeSection({ onRecharge, onAddAccount }: { onRecharge: () => void; onAddAccount: () => void }) {
+function WelcomeSection({ onRecharge, onAddAccount, onBindAccount }: { onRecharge: () => void; onAddAccount: () => void; onBindAccount: () => void }) {
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-sapphire p-6 text-primary-foreground shadow-lg sm:p-8">
       <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -493,6 +495,13 @@ function WelcomeSection({ onRecharge, onAddAccount }: { onRecharge: () => void; 
           >
             <Plus className="mr-2 h-4 w-4" />
             新增账户
+          </Button>
+          <Button
+            onClick={onBindAccount}
+            className="bg-white text-primary shadow-md hover:bg-white/90"
+          >
+            <Hash className="mr-2 h-4 w-4" />
+            绑定账户
           </Button>
           <Button
             onClick={onRecharge}
@@ -1000,8 +1009,8 @@ function RechargeTasks({
   );
 }
 
-function AccountOverview({ onRecharge, onAddAccount, onViewLedger, onViewDetail }: {
-  onRecharge: () => void; onAddAccount: () => void;
+function AccountOverview({ onRecharge, onAddAccount, onBindAccount, onViewLedger, onViewDetail }: {
+  onRecharge: () => void; onAddAccount: () => void; onBindAccount: () => void;
   onViewLedger: (account: typeof accounts[0]) => void;
   onViewDetail: (account: typeof accounts[0]) => void;
 }) {
@@ -1039,6 +1048,10 @@ function AccountOverview({ onRecharge, onAddAccount, onViewLedger, onViewDetail 
             <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={onAddAccount}>
               <Plus className="h-3.5 w-3.5" />
               新增账户
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={onBindAccount}>
+              <Hash className="h-3.5 w-3.5" />
+              绑定账户
             </Button>
             <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs text-muted-foreground">
               查看全部
@@ -1227,6 +1240,7 @@ function Index() {
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [detailTask, setDetailTask] = useState<Task | null>(null);
   const [addAccountModalOpen, setAddAccountModalOpen] = useState(false);
+  const [bindAccountModalOpen, setBindAccountModalOpen] = useState(false);
   const [uploadPaymentOpen, setUploadPaymentOpen] = useState(false);
   const [uploadTask, setUploadTask] = useState<Task | null>(null);
   const [uploadMode, setUploadMode] = useState<UploadMode>("upload");
@@ -1245,6 +1259,7 @@ function Index() {
 
   const handleRecharge = () => setRechargeModalOpen(true);
   const handleAddAccount = () => setAddAccountModalOpen(true);
+  const handleBindAccount = () => setBindAccountModalOpen(true);
 
   const handleViewDetail = useCallback((task: Task) => {
     setDetailTask(task);
@@ -1370,12 +1385,12 @@ function Index() {
 
   return (
     <div className="space-y-6 p-6">
-      <WelcomeSection onRecharge={handleRecharge} onAddAccount={handleAddAccount} />
+      <WelcomeSection onRecharge={handleRecharge} onAddAccount={handleAddAccount} onBindAccount={handleBindAccount} />
       <StatsCards />
 
       <RechargeTasks onViewDetail={handleViewDetail} onUploadPayment={handleUploadPayment} onRecharge={handleRecharge} onCancelOrder={handleCancelOrder} onContinueSubmit={handleContinueSubmit} onSpecialPayment={handleSpecialPayment} onRefundRequest={handleRefundRequest} />
 
-      <AccountOverview onRecharge={handleRecharge} onAddAccount={handleAddAccount} onViewLedger={handleViewLedger} onViewDetail={handleViewAccountDetail} />
+      <AccountOverview onRecharge={handleRecharge} onAddAccount={handleAddAccount} onBindAccount={handleBindAccount} onViewLedger={handleViewLedger} onViewDetail={handleViewAccountDetail} />
 
       {/* ── Modals & Drawers ────────────────────────────── */}
       <RechargeModal
@@ -1396,6 +1411,11 @@ function Index() {
       <AddAccountModal
         open={addAccountModalOpen}
         onOpenChange={setAddAccountModalOpen}
+      />
+
+      <BindAccountModal
+        open={bindAccountModalOpen}
+        onOpenChange={setBindAccountModalOpen}
       />
 
       <UploadPaymentModal
