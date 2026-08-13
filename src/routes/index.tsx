@@ -1359,7 +1359,7 @@ function Index() {
         mode={uploadMode}
       />
 
-      <SpecialPaymentModal
+      <VoucherUploadModal
         open={specialPaymentOpen}
         onOpenChange={setSpecialPaymentOpen}
         task={specialPaymentTask}
