@@ -67,6 +67,7 @@ const accounts: Account[] = [
 ];
 
 const purposes = ["达人采买", "广告投放", "助推投流", "其他"];
+const businessContacts = ["李商务", "王商务", "张商务", "陈商务"];
 
 const DISCOUNT_RATE = 0.98;
 const DISCOUNT_LABEL = "98 折";
@@ -243,6 +244,7 @@ function FormStep({ onSuccess, onClose, onSaveDraft }: { onSuccess: (rechargeId:
   // Section 6 — Special approval (special only)
   const [specialReason, setSpecialReason] = useState("");
   const [expectedRepayTime, setExpectedRepayTime] = useState("");
+  const [businessContact, setBusinessContact] = useState("");
   const [approvalFile, setApprovalFile] = useState<File | null>(null);
 
   // Section 7 — Recharge info
@@ -278,7 +280,7 @@ function FormStep({ onSuccess, onClose, onSaveDraft }: { onSuccess: (rechargeId:
       return receiptFile !== null && payAmount.trim() !== "" && payAccountName.trim() !== "";
     }
     if (isSpecial) {
-      return specialReason.trim() !== "" && expectedRepayTime.trim() !== "";
+      return specialReason.trim() !== "" && expectedRepayTime.trim() !== "" && businessContact.trim() !== "";
     }
     return false;
   })();
@@ -539,20 +541,14 @@ function FormStep({ onSuccess, onClose, onSaveDraft }: { onSuccess: (rechargeId:
                 <Textarea placeholder="请说明申请特批充值的原因，例如投放时间紧急、账户余额不足、需提前锁定资源等。" value={specialReason} onChange={(e) => setSpecialReason(e.target.value)} className="min-h-[80px] resize-none" />
               </div>
 
-              {/* Row: committed amount + expected payment time */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-semibold">客户承诺付款金额</Label>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-muted-foreground">¥</span>
-                    <Input type="text" value={`¥${formatAmount(payableAmount)}`} readOnly className="h-10 pl-7 bg-muted/50 text-foreground cursor-default" />
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">系统根据充值金额和折扣自动计算</p>
+              {/* 客户承诺付款金额 */}
+              <div className="space-y-1.5">
+                <Label className="text-sm font-semibold">客户承诺付款金额</Label>
+                <div className="relative max-w-xs">
+                  <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-muted-foreground">¥</span>
+                  <Input type="text" value={`¥${formatAmount(payableAmount)}`} readOnly className="h-10 pl-7 bg-muted/50 text-foreground cursor-default" />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-semibold">预计付款/到账时间 <span className="text-destructive">*</span></Label>
-                  <Input type="datetime-local" value={expectedRepayTime} onChange={(e) => setExpectedRepayTime(e.target.value)} className="h-10" placeholder="请选择预计完成付款或到账时间" />
-                </div>
+                <p className="text-[11px] text-muted-foreground">系统根据充值金额和折扣自动计算</p>
               </div>
 
             </div>
@@ -575,6 +571,25 @@ function FormStep({ onSuccess, onClose, onSaveDraft }: { onSuccess: (rechargeId:
                 </SelectContent>
               </Select>
             </div>
+
+            {isSpecial && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold">承诺付款时间 <span className="text-destructive">*</span></Label>
+                  <Input type="datetime-local" value={expectedRepayTime} onChange={(e) => setExpectedRepayTime(e.target.value)} className="h-10" placeholder="请选择承诺完成付款的日期与时间" />
+                  <p className="text-[11px] text-muted-foreground">请具体到日期与时间，米播将据此跟进付款进度</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold">联系商务负责人 <span className="text-destructive">*</span></Label>
+                  <Select value={businessContact} onValueChange={setBusinessContact}>
+                    <SelectTrigger className="h-10 w-full"><SelectValue placeholder="请选择对接商务负责人" /></SelectTrigger>
+                    <SelectContent>
+                      {businessContacts.map((b) => (<SelectItem key={b} value={b}>{b}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
 
             {!isSpecial && (
               <div className="space-y-1.5">

@@ -167,6 +167,9 @@ interface Task {
   transferSuggestion?: string;
   bankName?: string;
   bankAccount?: string;
+  specialReason?: string;
+  specialExpectedPayTime?: string;
+  businessContact?: string;
 }
 
 // ── Rejection helpers ──────────────────────────────────────────────────────
@@ -296,6 +299,8 @@ const tasks: Task[] = [
     node: "sp_payment_pending", rechargeType: "special",
     handler: "—", statusDescription: "充值已完成，等待客户按承诺时间付款并上传凭证",
     step: 5, totalSteps: 5, time: "2026-07-08 18:30", purpose: "广告投放", orderCompleted: false,
+    specialReason: "达人排期已锁定，账户余额不足需先行充值保障投放",
+    specialExpectedPayTime: "2026-07-20 18:00", businessContact: "李商务",
   },
   // Row 3: Regular, transfer failed at step 3 → 充值失败，可申请退款
   {
@@ -1389,6 +1394,9 @@ function Index() {
       transferCompletedTime: t.transferCompletedTime,
       transferErrorReason: t.transferErrorReason,
       transferSuggestion: t.transferSuggestion,
+      specialReason: t.specialReason,
+      promisedPayTime: t.specialExpectedPayTime,
+      businessContact: t.businessContact,
     };
   };
 

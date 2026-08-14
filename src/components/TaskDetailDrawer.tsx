@@ -24,6 +24,7 @@ import {
   XCircle,
   Loader,
   Image as ImageIcon,
+  Zap,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -63,6 +64,10 @@ export interface DetailTaskInfo {
   transferErrorReason?: string;
   transferSuggestion?: string;
   transferScreenshot?: string;
+  // Special approval info
+  specialReason?: string;
+  promisedPayTime?: string;
+  businessContact?: string;
 }
 
 interface TaskDetailDrawerProps {
@@ -387,6 +392,18 @@ export function TaskDetailDrawer({
             <InfoRow label="折扣" value={task.discount} />
             <InfoRow label="提交时间" value={task.time} />
           </SectionCard>
+
+          {/* Section 1b: Special Approval Info (special only) */}
+          {task.rechargeType === "special" && (
+            <SectionCard
+              title="特批信息"
+              icon={<Zap className="h-4 w-4 text-primary" />}
+            >
+              <InfoRow label="特批原因" value={task.specialReason || "—"} />
+              <InfoRow label="承诺付款时间" value={task.promisedPayTime || "—"} bold />
+              <InfoRow label="联系商务负责人" value={task.businessContact || "—"} />
+            </SectionCard>
+          )}
 
           {/* Section 2: Current Status */}
           <SectionCard
