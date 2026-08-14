@@ -2,6 +2,7 @@ import { Fragment, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Building2, User, Shield, Plus, CheckCircle2, Eye, Pencil, Lock, X, Hash,
+  FileText, Landmark, KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,10 +21,47 @@ export const Route = createFileRoute("/account-info")({ component: AccountInfoPa
 
 // ── Data ───────────────────────────────────────────────────────────────────
 
+// 每个星图账户均保留其"新增账户"时提交的完整信息（直客ID/联系人/资质证明方式/证明材料），
+// 用于在"已绑定账户"卡片与查看详情弹窗中完整回显。
 const starAccounts = [
-  { name: "云岚品牌中心", accountType: "主账户", accountId: "ST-10086101", subject: "上海云岚科技有限公司", authStatus: "已授权", status: "正常", balance: "¥286,500.00", available: "¥266,500.00", frozen: "¥20,000.00", monthlyRecharge: "¥100,000.00", monthlySpend: "¥68,000.00", updatedAt: "2026-07-10 14:32", authTime: "2025-12-01", authExpire: "2026-12-01" },
-  { name: "云岚效果投放", accountType: "投放账户", accountId: "ST-10086102", subject: "上海云岚科技有限公司", authStatus: "已授权", status: "正常", balance: "¥142,300.00", available: "¥142,300.00", frozen: "¥0.00", monthlyRecharge: "¥80,000.00", monthlySpend: "¥56,800.00", updatedAt: "2026-07-10 14:15", authTime: "2025-10-15", authExpire: "2026-10-15" },
-  { name: "云岚内容增长", accountType: "运营账户", accountId: "ST-10086103", subject: "上海云岚科技有限公司", authStatus: "已授权", status: "正常", balance: "¥58,200.00", available: "¥58,200.00", frozen: "¥0.00", monthlyRecharge: "¥20,000.00", monthlySpend: "¥32,000.00", updatedAt: "2026-07-10 13:58", authTime: "2025-11-20", authExpire: "2026-11-20" },
+  {
+    name: "云岚品牌中心", accountType: "主账户", accountId: "ST-10086101", subject: "上海云岚科技有限公司",
+    authStatus: "已授权", status: "正常", balance: "¥286,500.00", available: "¥266,500.00", frozen: "¥20,000.00",
+    monthlyRecharge: "¥100,000.00", monthlySpend: "¥68,000.00", updatedAt: "2026-07-10 14:32",
+    authTime: "2025-12-01", authExpire: "2026-12-01",
+    directClientId: "DK-77015",
+    contactName: "李明", contactPhone: "17388884451", contactEmail: "shu.yan@yunlan.com",
+    proofType: "bank" as const, proofBankName: "招商银行股份有限公司上海张江支行", proofBankCard: "6225888899990001", proofAuthAccountId: "",
+    materialFiles: [
+      { name: "营业执照_云岚品牌中心.pdf", sizeKB: 764 },
+      { name: "品牌LOGO.png", sizeKB: 210 },
+    ],
+  },
+  {
+    name: "云岚效果投放", accountType: "投放账户", accountId: "ST-10086102", subject: "上海云岚科技有限公司",
+    authStatus: "已授权", status: "正常", balance: "¥142,300.00", available: "¥142,300.00", frozen: "¥0.00",
+    monthlyRecharge: "¥80,000.00", monthlySpend: "¥56,800.00", updatedAt: "2026-07-10 14:15",
+    authTime: "2025-10-15", authExpire: "2026-10-15",
+    directClientId: "DK-77016",
+    contactName: "赵蕾", contactPhone: "13911112222", contactEmail: "zhaolei@yunlan.com",
+    proofType: "auth" as const, proofBankName: "", proofBankCard: "", proofAuthAccountId: "ST-90021078",
+    materialFiles: [
+      { name: "账户授权书_云岚效果投放.pdf", sizeKB: 528 },
+    ],
+  },
+  {
+    name: "云岚内容增长", accountType: "运营账户", accountId: "ST-10086103", subject: "上海云岚科技有限公司",
+    authStatus: "已授权", status: "正常", balance: "¥58,200.00", available: "¥58,200.00", frozen: "¥0.00",
+    monthlyRecharge: "¥20,000.00", monthlySpend: "¥32,000.00", updatedAt: "2026-07-10 13:58",
+    authTime: "2025-11-20", authExpire: "2026-11-20",
+    directClientId: "DK-77017",
+    contactName: "孙昊", contactPhone: "18600003333", contactEmail: "sunhao@yunlan.com",
+    proofType: "bank" as const, proofBankName: "招商银行股份有限公司上海张江支行", proofBankCard: "6225888899990002", proofAuthAccountId: "",
+    materialFiles: [
+      { name: "营业执照_云岚内容增长.pdf", sizeKB: 701 },
+      { name: "软著证书.pdf", sizeKB: 389 },
+    ],
+  },
 ];
 
 const accountTypeClass: Record<string, string> = {
@@ -40,6 +78,10 @@ const statusConfig: Record<string, string> = {
   "未授权": "border-amber-200 bg-amber-50 text-amber-700",
   "授权即将过期": "border-yellow-200 bg-yellow-50 text-yellow-700",
 };
+
+// "新增账户"提交时选择的资质证明方式 → 展示文案
+const proofTypeLabel = (proofType: "bank" | "auth"): string =>
+  proofType === "bank" ? "银行开户对公" : "账户授权";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -685,6 +727,11 @@ function AccountInfoPage() {
                 <div><span className="text-muted-foreground">授权：</span><Badge className={`h-4 px-1 text-[10px] ${statusConfig[a.authStatus] ?? ""}`}>{a.authStatus}</Badge></div>
                 <div><span className="text-muted-foreground">状态：</span><Badge className={`h-4 gap-0.5 px-1 text-[10px] ${statusConfig[a.status] ?? ""}`}><CheckCircle2 className="h-2.5 w-2.5" />{a.status}</Badge></div>
               </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1.5 mt-2 pt-2 border-t border-border/30 text-xs">
+                <div><span className="text-muted-foreground">直客ID：</span><span className="font-mono text-foreground">{a.directClientId}</span></div>
+                <div><span className="text-muted-foreground">联系人：</span><span className="text-foreground">{a.contactName} {maskPhone(a.contactPhone)}</span></div>
+                <div className="sm:col-span-2"><span className="text-muted-foreground">资质证明：</span><span className="text-foreground">{proofTypeLabel(a.proofType)}</span></div>
+              </div>
               <div className="flex items-center gap-4 mt-2 pt-2 border-t border-border/30 text-xs">
                 <span><span className="text-muted-foreground">余额：</span><span className="font-bold text-foreground">{a.balance}</span></span>
                 <span className="text-emerald-600"><span className="text-muted-foreground">本月充值：</span>{a.monthlyRecharge}</span>
@@ -740,6 +787,45 @@ function AccountInfoPage() {
                 </div>
                 <InfoCell label="星图账户 ID" value={detailAccount.accountId} mono />
                 <InfoCell label="账户主体" value={detailAccount.subject} />
+                <InfoCell label="直客ID" value={detailAccount.directClientId} mono />
+              </div>
+              <div className="rounded-xl border border-border/60 p-4">
+                <h4 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <User className="h-3.5 w-3.5 text-primary" />联系人信息
+                </h4>
+                <InfoCell label="联系人姓名" value={detailAccount.contactName} />
+                <InfoCell label="联系电话" value={maskPhone(detailAccount.contactPhone)} />
+                <InfoCell label="账号绑定邮箱" value={detailAccount.contactEmail} />
+              </div>
+              <div className="rounded-xl border border-border/60 p-4">
+                <h4 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  {detailAccount.proofType === "bank" ? <Landmark className="h-3.5 w-3.5 text-primary" /> : <KeyRound className="h-3.5 w-3.5 text-primary" />}
+                  资质证明信息
+                </h4>
+                <div className="flex items-center border-b border-border/30 last:border-0">
+                  <span className="text-xs text-muted-foreground shrink-0 py-2.5 w-[120px]">资质证明方式</span>
+                  <Badge className="ml-3 h-4 px-1 text-[10px] border-blue-200 bg-blue-50 text-blue-700">{proofTypeLabel(detailAccount.proofType)}</Badge>
+                </div>
+                {detailAccount.proofType === "bank" ? (
+                  <>
+                    <InfoCell label="开户行" value={detailAccount.proofBankName} />
+                    <InfoCell label="银行卡号" value={detailAccount.proofBankCard} mono />
+                  </>
+                ) : (
+                  <InfoCell label="可授权账户ID" value={detailAccount.proofAuthAccountId} mono />
+                )}
+                <div className="pt-2.5">
+                  <span className="text-xs text-muted-foreground">已上传证明材料</span>
+                  <div className="mt-1.5 space-y-1.5">
+                    {detailAccount.materialFiles.map((f) => (
+                      <div key={f.name} className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5">
+                        <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
+                        <span className="min-w-0 flex-1 truncate text-xs text-foreground">{f.name}</span>
+                        <span className="shrink-0 text-[11px] text-muted-foreground">{f.sizeKB.toFixed(0)} KB</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
               <div className="rounded-xl border border-border/60 p-4">
                 <h4 className="mb-3 text-sm font-semibold text-foreground">授权信息</h4>
