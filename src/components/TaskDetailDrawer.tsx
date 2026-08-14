@@ -16,7 +16,6 @@ import {
   User,
   Building2,
   Wallet,
-  ArrowUpRight,
   Upload,
   AlertCircle,
   RefreshCw,
@@ -24,6 +23,7 @@ import {
   CreditCard,
   XCircle,
   Loader,
+  Image as ImageIcon,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -62,15 +62,14 @@ export interface DetailTaskInfo {
   transferCompletedTime?: string;
   transferErrorReason?: string;
   transferSuggestion?: string;
+  transferScreenshot?: string;
 }
 
 interface TaskDetailDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   task: DetailTaskInfo | null;
-  onViewProgress?: () => void;
   onViewLedger?: () => void;
-  onUploadReceipt?: () => void;
 }
 
 // ── Progress node types ────────────────────────────────────────────────────
@@ -322,9 +321,7 @@ export function TaskDetailDrawer({
   open,
   onOpenChange,
   task,
-  onViewProgress,
   onViewLedger,
-  onUploadReceipt,
 }: TaskDetailDrawerProps) {
   if (!task) return null;
 
@@ -336,17 +333,12 @@ export function TaskDetailDrawer({
 
   const nodes = getNodes(task);
   const isCompleted = task.node === "completed" || (task.rechargeType === "special" && task.step >= task.totalSteps && task.financeConfirmed);
-  const isTransferring = task.node === "transferring" || task.node === "finance_confirm";
   const isError = task.node === "transfer_error";
-  const isPendingPayment = task.node === "pending_payment" || task.node === "sp_payment_pending";
   const isPendingAudit = task.node === "pending_audit";
   const isAuditRejected = task.node === "audit_rejected";
 
   const footerAction = () => {
-    if (isTransferring) return { label: "查看进度", icon: <ArrowUpRight className="h-4 w-4" />, onClick: onViewProgress };
     if (isCompleted) return { label: "查看流水", icon: <FileText className="h-4 w-4" />, onClick: onViewLedger };
-    if (isError) return { label: "补充材料", icon: <Upload className="h-4 w-4" />, onClick: onUploadReceipt };
-    if (isPendingPayment) return { label: "上传回单", icon: <Upload className="h-4 w-4" />, onClick: onUploadReceipt };
     if (isAuditRejected) return { label: "修改申请", icon: <FileText className="h-4 w-4" />, onClick: () => {} };
     return null;
   };
@@ -382,9 +374,9 @@ export function TaskDetailDrawer({
         </SheetHeader>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
-          {/* Section 1: Basic Info */}
+          {/* Section 1: Account Info */}
           <SectionCard
-            title="基础信息"
+            title="充值账户信息"
             icon={<Building2 className="h-4 w-4 text-primary" />}
           >
             <InfoRow label="充值单号" value={task.id} mono />
@@ -519,43 +511,7 @@ export function TaskDetailDrawer({
             );
           })()}
 
-          {/* Section 4: Account Recharge Info */}
-          <SectionCard
-            title="米播进行账户充值"
-            icon={<RefreshCw className="h-4 w-4 text-primary" />}
-          >
-            {task.transferStatus ? (
-              <>
-                <InfoRow
-                  label="转账状态"
-                  value={task.transferStatus}
-                  bold
-                />
-                {task.transferId && (
-                  <InfoRow label="平台流水号" value={task.transferId} mono />
-                )}
-                {task.transferCompletedTime && (
-                  <InfoRow label="转账完成时间" value={task.transferCompletedTime} />
-                )}
-                {task.transferErrorReason && (
-                  <div className="mt-2 rounded-lg bg-red-50 p-3">
-                    <p className="text-xs font-medium text-red-700">失败原因</p>
-                    <p className="mt-1 text-xs text-red-600">{task.transferErrorReason}</p>
-                    {task.transferSuggestion && (
-                      <p className="mt-1 text-xs text-red-500">{task.transferSuggestion}</p>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="flex items-center gap-2 py-2">
-                <Loader className="h-4 w-4 animate-spin text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">处理中</span>
-              </div>
-            )}
-          </SectionCard>
-
-          {/* Section 5: Progress Overview */}
+          {/* Section 4: Progress Overview */}
           <SectionCard
             title="进度概览"
             icon={<FileText className="h-4 w-4 text-primary" />}
@@ -641,6 +597,33 @@ export function TaskDetailDrawer({
                 );
               })}
             </div>
+          </SectionCard>
+
+          {/* Section 5: Transfer Screenshot */}
+          <SectionCard
+            title="划拨截图"
+            icon={<ImageIcon className="h-4 w-4 text-primary" />}
+          >
+            {task.transferScreenshot ? (
+              <>
+                <div className="overflow-hidden rounded-lg border border-border/60">
+                  <img src={task.transferScreenshot} alt="划拨截图" className="w-full object-cover" />
+                </div>
+                {task.transferCompletedTime && (
+                  <p className="mt-2 text-xs text-muted-foreground">划拨时间：{task.transferCompletedTime}</p>
+                )}
+              </>
+            ) : task.node === "transferring" || task.node === "finance_confirm" ? (
+              <div className="flex items-center gap-2 py-2">
+                <Loader className="h-4 w-4 animate-spin text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">米播正在处理账户划拨，完成后将展示划拨截图</span>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border/60 py-6 text-center">
+                <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
+                <span className="text-xs text-muted-foreground">暂无划拨截图</span>
+              </div>
+            )}
           </SectionCard>
         </div>
 
